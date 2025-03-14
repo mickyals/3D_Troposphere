@@ -64,7 +64,7 @@ pointcloud:
   num_points: 500000000 # 5 hun milly
   lat_range: [-90,90]
   lon_range: [-180,180]
-  geopotential_height_range: [-428.6875, 48664.082] # default is range of entire dataset in training
+  geopotential_height_range: [-428.6875, 48664.082] # default is range of entire dataset in training -428.6875, 48664.082
   
 
 model_checkpoint: "./checkpoints/this_model.pth" #example  
