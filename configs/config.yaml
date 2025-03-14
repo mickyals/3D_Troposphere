@@ -1,0 +1,44 @@
+dataset:
+  nc_file: ./3D_atmosphere_updated_z.nc
+  variables:
+    inputs: 
+      geopotential_height: "z"
+      specific_humidity: "q"
+      pressure_level: "pressure_level"
+      latitude: "latitude"
+      longitude: "longitude"
+    target: 
+      temperature: "t"
+  batch_size: 1 # dataset is define as 24 time stamps so a batch size of 1 ensure only one timestamp is seen by model per batch
+  shuffle: True
+  num_workers: 10
+
+model:
+  _target_: "directory.python_file.model_class_name"   
+  hidden_layers: [256, 256, 256]        
+  activation: "sine"                     
+  init_params:
+    w0 : 30.0       # Parameter for the sine activation, if used.     
+    
+  optimizer_config: #default is for adam
+    type: "Adam"
+    learning_rate: 0.001 #default for adam
+    params:
+      betas: [0.9, 0.999]
+      eps: 1e-8  #this Parameter will cause the biggest changes to training ease and stability
+      
+  scheduler:
+    type: "CosineAnnealingLR"
+    params:
+      T_max: 10 #number of iterations per cycle
+      eta_min: 1e-8 #min learning rate
+      interval: "epoch" # update per epoch
+    
+  loss_config:
+    type: "MSELoss"
+    params:
+      reduction: "mean"
+      
+    physics_weight: 1.0              
+    regularizer_weight: 0.1
+    regularizer_norm: 'L2' # L1 (mean abs) or L2   (mean^2)
