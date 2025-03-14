@@ -4,6 +4,8 @@ from torch import nn
 from utils import instantiate_from_config
 import time
 import wandb
+import os
+from helpers import set_seed, debug_print
 
 
 
@@ -15,6 +17,7 @@ class INRModel(pl.LightningModule):
     and includes PDE-based losses (hydrostatic loss and hypsometric regularizer).
     """
         super().__init__()
+        debug_print()
         self.config = config.model
         self.net = instantiate_from_config(self.config)
 
@@ -36,11 +39,13 @@ class INRModel(pl.LightningModule):
 
 
     def forward(self, x):
+        debug_print()
         return self.net(x)
 
     def training_step(self, batch, batch_idx):
-
+        debug_print()
         # inputs for foward pass
+
         inputs = batch['inputs']  # shape (N, 4) - N, [pressure_level_norm, x_coord, y_coord, z_coord]
         target = batch['target'] # shape (N, 1) - N, [temperature_norm]
         pde_inputs = batch['pde_inputs'] # shape (N, 3) - N, [pressure_level, geopotential_height, specific_humidity]
@@ -67,7 +72,7 @@ class INRModel(pl.LightningModule):
         return total_loss
 
     def configure_optimizers(self):
-
+        debug_print()
         # load the optimser configs
         optim_cfg = self.config.optimizer_config
         optim_class = getattr(torch.optim, optim_cfg.type, torch.optim.Adam) # default is adam
@@ -93,7 +98,7 @@ class INRModel(pl.LightningModule):
         """ A loss function for designing a physics loss, by default the loss is the hydrostatic function
         change the logic of this function to suit your needs"""
 
-
+        debug_print()
         p = pde_inputs["pressure_level"]
         gh = pde_inputs["geopotential_height"].clone().requires_grad_(True)
         q = pde_inputs["specific_humidity"]
@@ -131,6 +136,8 @@ class INRModel(pl.LightningModule):
 
              Δz_actual = base_geopotential_height - geopotential_height
         """
+
+        debug_print()
         # Extract PDE variables
         p = pde_inputs["pressure_level"]    # shape (N, 1), in hPa
         gh = pde_inputs["geopotential_height"]  # shape (N, 1), in meters
@@ -152,7 +159,7 @@ class INRLoggerCallback(pl.Callback):
     def __init__(self, monitor_metrics, mode="min", save_path="checkpoints"):
 
         super().__init__()
-
+        debug_print()
         self.monitor_metrics = monitor_metrics
         self.mode = mode
         self.save_path = save_path
@@ -165,16 +172,19 @@ class INRLoggerCallback(pl.Callback):
 
     def on_train_start(self, trainer, pl_module):
         """record start time"""
+        debug_print()
         self.total_start_time = time.time()
         print("Training Started...")
 
     def on_train_epoch_start(self, trainer, pl_module):
         """Records the epoch logs it."""
+        debug_print()
         epoch = trainer.current_epoch
         print(f"Starting Epoch {epoch}")
 
     def on_train_batch_end(self, trainer, pl_module, batch_idx, dataloader_idx):
 
+        debug_print()
         current_metrics = trainer.callback_metrics
         for metric in self.monitor_metrics:
             if metric in current_metrics:
@@ -194,11 +204,13 @@ class INRLoggerCallback(pl.Callback):
 
     def on_train_epoch_end(self, trainer, pl_module):
         """Prints, logs, and calculates epoch time."""
+        debug_print()
         epoch = trainer.current_epoch
         print(f"Finished Epoch {epoch}")
 
     def on_train_end(self, trainer, pl_module):
         """Calculates and logs total training time."""
+        debug_print()
         total_duration = time.time() - self.total_start_time
         print(f"\n Training Completed! Total Time: {total_duration:.2f} sec")
         wandb.log({"total_training_time": total_duration})

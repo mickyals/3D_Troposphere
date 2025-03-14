@@ -14,7 +14,7 @@ dataset:
   num_workers: 10
 
 model:
-  _target_: "directory.python_file.model_class_name"   
+  _target_: "directory.python_file.model_class_name"
   hidden_layers: [256, 256, 256]        
   activation: "sine"                     
   init_params:
@@ -55,3 +55,17 @@ trainer:
          - "train/total_loss"
        mode:
        save_path: "checkpoints"
+       
+       
+
+
+
+pointcloud:
+  num_points: 500000000 # 5 hun milly
+  lat_range: [-90,90]
+  lon_range: [-180,180]
+  geopotential_height_range: [-428.6875, 48664.082] # default is range of entire dataset in training
+  
+
+model_checkpoint: "./checkpoints/this_model.pth" #example  
+  

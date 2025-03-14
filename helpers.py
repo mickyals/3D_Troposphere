@@ -2,6 +2,7 @@ import wandb
 import random
 import numpy as np
 import torch
+import inspect
 
 def set_seed(seed):
     random.seed(seed)
@@ -41,5 +42,19 @@ def init_wandb(api_key=None, project="3D_Atmosphere", entity=None, config=None):
     wandb.login(key=api_key)
     wandb.init(project=project, entity=entity, config=config)
 
-def init_logger():
-    pass
+
+def debug_print():
+    """Prints the current function name and class (if available) for debugging."""
+    frame = inspect.currentframe().f_back  # Get the caller's frame
+    function_name = frame.f_code.co_name  # Function name
+
+    # Get class name if inside a class method
+    class_name = None
+    if 'self' in frame.f_locals:
+        class_name = frame.f_locals['self'].__class__.__name__
+
+    if class_name:
+        print(f"Debug: {class_name}.{function_name}() is running...")
+    else:
+        print(f"Debug: {function_name}() is running...")
+

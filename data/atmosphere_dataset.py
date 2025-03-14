@@ -2,6 +2,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 import xarray as xr
 import numpy as np
+from helpers import debug_print
 
 
 
@@ -13,7 +14,7 @@ class AtmosphereDataset(Dataset):
         Args:
             config: OmegaConf config with dataset settings.
         """
-
+        debug_print()
         self.nc_file = config.dataset.nc_file
 
         # open dataset
@@ -33,7 +34,7 @@ class AtmosphereDataset(Dataset):
 
     def _open_dataset(self):
         """Open the NetCDF file with chunking along time dimension"""
-
+        debug_print()
         return xr.open_dataset(
             self.nc_file,
             chunks={"valid_time" :1},
@@ -43,6 +44,7 @@ class AtmosphereDataset(Dataset):
 
 
     def __len__(self):
+        debug_print()
         return self.time_dim # 24 batches of data - 24 images of the atmosphere - 24 time stamps
 
 
@@ -57,6 +59,7 @@ class AtmosphereDataset(Dataset):
         specific humidity, and the base geopotential height (at 1000 mb).
         """
         # Select the current time step using the valid_time coordinate.
+        debug_print()
         current_timestep = self.valid_time[time_idx]
 
         # Extract the 3D fields for this time step (shape: [Pressure_level, Lat, Lon])
