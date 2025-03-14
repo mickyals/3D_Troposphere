@@ -2,6 +2,8 @@ import pytorch_lightning as pl
 import torch
 from torch import nn
 from utils import instantiate_from_config
+import time
+import wandb
 
 
 
@@ -145,6 +147,61 @@ class INRModel(pl.LightningModule):
 
         return hypsometric_loss
 
+
+class INRLoggerCallback(pl.Callback):
+    def __init__(self, monitor_metrics, mode="min", save_path="checkpoints"):
+
+        super().__init__()
+
+        self.monitor_metrics = monitor_metrics
+        self.mode = mode
+        self.save_path = save_path
+        self.best_metrics = {metric: float("inf") if mode == "min" else float("-inf") for metric in monitor_metrics}
+
+        os.makedirs(save_path, exist_ok=True)
+
+        # Track time
+        self.total_start_time = None
+
+    def on_train_start(self, trainer, pl_module):
+        """record start time"""
+        self.total_start_time = time.time()
+        print("Training Started...")
+
+    def on_train_epoch_start(self, trainer, pl_module):
+        """Records the epoch logs it."""
+        epoch = trainer.current_epoch
+        print(f"Starting Epoch {epoch}")
+
+    def on_train_batch_end(self, trainer, pl_module, batch_idx, dataloader_idx):
+
+        current_metrics = trainer.callback_metrics
+        for metric in self.monitor_metrics:
+            if metric in current_metrics:
+                metric_value = current_metrics[metric].item()
+                if (self.mode == "min" and metric_value < self.best_metrics[metric]) or \
+                        (self.mode == "max" and metric_value > self.best_metrics[metric]):
+                    self.best_metrics[metric] = metric_value  # Update best metric
+                    checkpoint_path = os.path.join(self.save_path, f"best_{metric}.ckpt")
+
+                    # Save model checkpoint
+                    trainer.save_checkpoint(checkpoint_path)
+                    print(
+                        f"New best {metric}: {metric_value:.6f} at batch {batch_idx}. Model saved to {checkpoint_path}")
+
+                # Log to WandB
+                wandb.log({metric: metric_value})
+
+    def on_train_epoch_end(self, trainer, pl_module):
+        """Prints, logs, and calculates epoch time."""
+        epoch = trainer.current_epoch
+        print(f"Finished Epoch {epoch}")
+
+    def on_train_end(self, trainer, pl_module):
+        """Calculates and logs total training time."""
+        total_duration = time.time() - self.total_start_time
+        print(f"\n Training Completed! Total Time: {total_duration:.2f} sec")
+        wandb.log({"total_training_time": total_duration})
 
 
 

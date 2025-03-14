@@ -41,4 +41,17 @@ model:
       
     physics_weight: 1.0              
     regularizer_weight: 0.1
-    regularizer_norm: 'L2' # L1 (mean abs) or L2   (mean^2)
+    regularizer_norm: "L2" # L1 (mean abs) or L2   (mean^2)
+
+
+trainer:
+   max_epochs: 1000
+   callbacks:
+     INRLoggerCallback:
+       monitor_metrics:
+         - "train/data_loss"
+         - "train/physics_loss"
+         - "train/physics_regulariser"
+         - "train/total_loss"
+       mode:
+       save_path: "checkpoints"
