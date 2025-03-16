@@ -10,6 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import kan
 import time
+from helpers import debug_print
 
 def get_mgrid(sidelen, dim=2):
     '''Generates a flattened grid of (x,y,...) coordinates in a range of -1 to 1.
@@ -33,6 +34,7 @@ class SineLayer(nn.Module):
     def __init__(self, in_features, out_features, bias=True,
                  is_first=False, omega_0=30):
         super().__init__()
+        debug_print()
         self.omega_0 = omega_0
         self.is_first = is_first
         
@@ -64,7 +66,7 @@ class Siren_KAN(nn.Module):
     def __init__(self, in_features, hidden_features, hidden_layers, out_features, outermost_linear=False, 
                  first_omega_0=30, hidden_omega_0=30.):
         super().__init__()
-        
+        debug_print()
         # self.fomega = nn.Parameter(150*torch.rand([1])).to(device)
         # self.homega = nn.Parameter(150*torch.rand([1])).to(device)
 

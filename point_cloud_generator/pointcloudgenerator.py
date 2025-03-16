@@ -47,27 +47,36 @@ class PointCloudGenerator:
 
     def sample_points(self):
         debug_print()
-        lat_samples = np.random.uniform(self.lat_range[0], self.lat_range[1], self.num_points)
-        lon_samples = np.random.uniform(self.lon_range[0], self.lon_range[1], self.num_points)
-        gh_samples = np.random.uniform(self.gh_range[0], self.gh_range[1], self.num_points)
+        # Define number of points explicitly from config
+        num_lats = self.config.pointcloud.resolution.num_lats
+        num_lons = self.config.pointcloud.resolution.num_lons
+        num_heights = self.config.pointcloud.resolution.num_geopotential_heights  # Vertical resolution
 
-        # convert to lat and lon degrees to radians
+        # Sample latitude, longitude, and geopotential height at specified resolutions
+        lat_samples = np.linspace(self.lat_range[0], self.lat_range[1], num_lats)
+        lon_samples = np.linspace(self.lon_range[0], self.lon_range[1], num_lons)
+        gh_samples = np.linspace(self.gh_range[0], self.gh_range[1], num_heights)
+
+        # Convert lat and lon degrees to radians
         lat_rad = np.radians(lat_samples)
         lon_rad = np.radians(lon_samples)
 
-        # Convert lat, lon to Cartesian coordinates.
-        x = np.cos(lat_rad) * np.cos(lon_rad)
-        y = np.cos(lat_rad) * np.sin(lon_rad)
-        z = np.sin(lat_rad)
+        # Create a structured 3D grid of (lat, lon, gh)
+        lat_grid, lon_grid, gh_grid = np.meshgrid(lat_samples, lon_samples, gh_samples, indexing="ij")
 
-        # Normalize the geopotential height to [-1, 1].
-        gh_norm = 2 * (gh_samples - self.gh_min) / (self.gh_max - self.gh_min) - 1
+        # Convert lat, lon to Cartesian coordinates
+        x = np.cos(np.radians(lat_grid)) * np.cos(np.radians(lon_grid))
+        y = np.cos(np.radians(lat_grid)) * np.sin(np.radians(lon_grid))
+        z = np.sin(np.radians(lat_grid))
 
-        # Stack features: note that the INR model expects inputs [x, y, z, gh_norm].
-        inputs = np.stack([x, y, z, gh_norm], axis=1)
+        # Normalize the geopotential height to [-1, 1]
+        gh_norm = 2 * (gh_grid - self.gh_min) / (self.gh_max - self.gh_min) - 1
+
+        # Stack features: INR model expects [x, y, z, gh_norm]
+        inputs = np.stack([x.flatten(), y.flatten(), z.flatten(), gh_norm.flatten()], axis=1)
         inputs_tensor = torch.tensor(inputs, dtype=torch.float32).to(self.device)
 
-        return inputs_tensor, lat_samples, lon_samples, gh_samples
+        return inputs_tensor, lat_grid.flatten(), lon_grid.flatten(), gh_grid.flatten()
 
     def generate(self):
         debug_print()
