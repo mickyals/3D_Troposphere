@@ -1,2 +1,4 @@
 *.py~
 .idea/
+venv/
+.DS_Store

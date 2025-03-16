@@ -14,11 +14,38 @@ dataset:
   num_workers: 10
 
 model:
-  _target_: "directory.python_file.model_class_name"
-  hidden_layers: [256, 256, 256]        
-  activation: "sine"                     
-  init_params:
-    w0 : 30.0       # Parameter for the sine activation, if used.     
+  ### SIREN
+  # _target_: "models.Siren_simple.Siren"
+  # in_features: 3  # (lat, lon, alt)
+  # out_features: 1 # temp
+  # outermost_linear: False
+  # hidden_size_top: 256
+  # hidden_layers: [256, 256, 256, 256]
+  # activation: "sine"
+  # init_params:
+  #   w0: 30.0       # Parameter for the sine activation, if used.     
+  #   w1: 30.0       # Hidden Omega
+
+  ### SIREN_KAN
+  # _target_: "models.Siren_kan.Siren_KAN"
+  # in_features: 3  # (lat, lon, alt)
+  # out_features: 1 # temp
+  # outermost_linear: False
+  # hidden_size_top: 256
+  # hidden_layers: [256, 256, 256, 256]
+  # activation: "sine"
+  # init_params:
+  #   w0: 30.0       # Parameter for the sine activation, if used.     
+  #   w1: 30.0       # Hidden Omega
+
+  ### MLP
+  # _target_: "models.MLP.MLPModel"
+  # name: MLP_ReLU
+  # input_dim: 3  # (lat, lon, alt)
+  # hidden_layers: [256, 256, 256, 256]  # 4-layer MLP with 256 neurons each
+  # activation: ReLU
+  # output_dim: 1  # Temperature
+  # loss: MSELoss
     
   optimizer_config: #default is for adam
     type: "Adam"
