@@ -9,4 +9,4 @@ def instantiate_from_config(config_dict):
     module_path, class_name = target_str.rsplit(".", 1)
     module = importlib.import_module(module_path)
     cls = getattr(module, class_name)
-    return cls(**config_dict)
+    return cls(config_dict)

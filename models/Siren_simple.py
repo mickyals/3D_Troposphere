@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader, Dataset
 import os
 
 from PIL import Image
-from torchvision.transforms import Resize, Compose, ToTensor, Normalize
+#from torchvision.transforms import Resize, Compose, ToTensor, Normalize
 import numpy as np
 import matplotlib.pyplot as plt
 

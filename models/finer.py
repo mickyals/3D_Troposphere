@@ -13,14 +13,14 @@ class FinerModel(nn.Module):
         """
         super().__init__()
         debug_print()
-        self.config = config.model
-        in_features = config.in_features
-        out_features = config.out_features
-        hidden_layers = config.num_hidden_layers
-        hidden_features = config.hidden_size
-        first_omega = config.init_params.w0
-        hidden_omega = config.init_params.w1
-        activation = config.init_params.activation
+        self.config = config
+        in_features = self.config.in_features
+        out_features = self.config.out_features
+        hidden_layers = self.config.num_hidden_layers
+        hidden_features = self.config.hidden_size
+        first_omega = self.config.init_params.w0
+        hidden_omega = self.config.init_params.w1
+        activation = self.config.init_params.activation
 
         layers = []
         layers.append(FinerLayer(in_features, hidden_features, omega_0=first_omega,

@@ -33,6 +33,10 @@ class INRModel(pl.LightningModule):
         loss_class = getattr(nn, loss_type, nn.MSELoss)
         self.loss = loss_class(**loss_params)
 
+        self.physics_loss = HydrostaticLoss()  # Instantiate physics loss module
+        self.gh_min = -428.6875
+        self.gh_max = 48664.082
+
         # these can be commented out if not need for your task
         self.GRAVITY = 9.80665 # gravitational acceleration
         self.Rd = 287 # dry air constant
@@ -43,31 +47,35 @@ class INRModel(pl.LightningModule):
         return self.net(x)
 
     def training_step(self, batch, batch_idx):
-        debug_print()
-        # inputs for foward pass
+        # Keep inputs as float32 but enable gradients
+        inputs = batch['inputs'].requires_grad_(True)  # [norm_gh, x, y, z]
+        target = batch['target']
+        pde_inputs = batch['pde_inputs']
 
-        inputs = batch['inputs']  # shape (N, 4) - N, [pressure_level_norm, x_coord, y_coord, z_coord]
-        target = batch['target'] # shape (N, 1) - N, [temperature_norm]
-        pde_inputs = batch['pde_inputs'] # shape (N, 3) - N, [pressure_level, geopotential_height, specific_humidity]
+        # Forward pass (predicts normalized temperature)
+        pred_norm = self.forward(inputs)  # Uses normalized inputs
 
-        pred_norm = self.forward(inputs)
-
-        # loss calculation
+        # Data loss (on normalized values)
         data_loss = self.loss(pred_norm, target)
 
-        K_min, K_max = 183, 330
-        T_real_pred = (pred_norm + 1) / 2 * (K_max - K_min) + K_min  # shape: (N, 1)
+        # Convert to REAL VALUES with gradient tracking
+        #K_min, K_max = 183, 330
 
-        physics_loss = self.compute_physics_loss(T_real_pred, pde_inputs)
-        physics_regulariser = self.compute_physics_reg(T_real_pred, pde_inputs)
+        # Denormalize while preserving gradients
+        #T_real_pred = (pred_norm + 1) / 2 * (K_max - K_min) + K_min
+        #gh_real = (inputs[:, 0] + 1) / 2 * (self.gh_max - self.gh_min) + self.gh_min  # [N,]
 
-        total_loss = data_loss + self.physics_weight*physics_loss + self.regularizer_weight*physics_regulariser
+        # Compute physics loss using REAL VALUES with gradient tracking
+        #physics_loss = self.physics_loss(T_real_pred, gh_real, pde_inputs)
+        #physics_regulariser = self.compute_physics_reg(T_real_pred, gh_real, pde_inputs)
+
+        total_loss = data_loss #+ self.physics_weight*physics_loss + self.regularizer_weight*physics_regulariser
 
         # logging into wandb
         self.log("train/data_loss", data_loss, on_step=True, on_epoch=True)
-        self.log("train/physics_loss", physics_loss, on_step=True, on_epoch=True)
-        self.log("train/physics_regulariser", physics_regulariser, on_step=True, on_epoch=True)
-        self.log("train/total_loss", total_loss, on_step=True, on_epoch=True)
+        #self.log("train/physics_loss", physics_loss, on_step=True, on_epoch=True)
+        #self.log("train/physics_regulariser", physics_regulariser, on_step=True, on_epoch=True)
+        #self.log("train/total_loss", total_loss, on_step=True, on_epoch=True)
 
         return total_loss
 
@@ -93,37 +101,33 @@ class INRModel(pl.LightningModule):
             return [optimizer], [{"scheduler": scheduler, "interval": interval}]
         return optimizer # if there is no scheduler
 
+    # def compute_physics_loss(self, T_real_pred, gh_real, pde_inputs):
+    #     """Physics loss using real values with proper gradient connection"""
+    #     p = pde_inputs["pressure_level"]  # [N,1]
+    #     q = pde_inputs["specific_humidity"]  # [N,1]
+    #
+    #     # Virtual temperature
+    #     T_v = T_real_pred * (1 + 0.61 * q)  # [N,1]
+    #
+    #     # Hydrostatic equation components
+    #     p_pa = p * 100  # Convert hPa to Pa
+    #     expected_dT_dz = - (p_pa * self.GRAVITY) / (self.Rd * T_v)  # [N,1]
+    #
+    #     # Compute gradient of temperature w.r.t REAL geopotential height
+    #     dT = torch.autograd.grad(
+    #         outputs=T_real_pred,
+    #         inputs=gh_real,  # Directly use real gh values
+    #         grad_outputs=torch.ones_like(T_real_pred),
+    #         create_graph=True,  # Needed for higher-order gradients
+    #         retain_graph=True,
+    #         allow_unused=False
+    #     )[0].unsqueeze(-1)  # [N,1]
+    #
+    #     # Compute MSE between predicted and expected gradient
+    #     hydrostatic_loss = torch.mean((dT - expected_dT_dz) ** 2)
+    #     return hydrostatic_loss
 
-    def compute_physics_loss(self, real_pred, pde_inputs):
-        """ A loss function for designing a physics loss, by default the loss is the hydrostatic function
-        change the logic of this function to suit your needs"""
-
-        debug_print()
-        p = pde_inputs["pressure_level"]
-        gh = pde_inputs["geopotential_height"].clone().requires_grad_(True)
-        q = pde_inputs["specific_humidity"]
-
-        # compute the virtual temperature
-        T_v = real_pred * (1 + 0.61 * q)
-
-        # convert pressure to Pa from hPa
-        p_pa = p * 100
-        expected_dT_dz = - (p_pa * self.GRAVITY) / (self.Rd * T_v)
-
-        # Use autograd to compute dT/dz with respect to geopotential height
-        dT = torch.autograd.grad(
-            outputs=real_pred,
-            inputs=gh,
-            grad_outputs=torch.ones_like(real_pred),
-            create_graph=True,
-            retain_graph=True)[0]  # shape (N, 1)
-
-        hydrostatic_loss = torch.mean((dT - expected_dT_dz) ** 2)
-
-        return hydrostatic_loss
-
-
-    def compute_physics_reg(self, real_pred, pde_inputs):
+    def compute_physics_reg(self, real_pred, gh_real, pde_inputs):
         """ A loss function for designing a physics regularization term, by default the loss is the hypsometric function
 
 
@@ -140,19 +144,56 @@ class INRModel(pl.LightningModule):
         debug_print()
         # Extract PDE variables
         p = pde_inputs["pressure_level"]    # shape (N, 1), in hPa
-        gh = pde_inputs["geopotential_height"]  # shape (N, 1), in meters
         gh_base = pde_inputs["base_geopotential_height"]  # shape (N, 1), in meters
 
         # Compute expected thickness using the hypsometric equation.
         expected_thickness = (self.Rd / self.GRAVITY) * real_pred * torch.log(1000.0 / p)
 
         # Compute actual thickness: difference between the base geopotential height and the current geopotential height.
-        actual_thickness = gh_base - gh
+        actual_thickness = gh_base - gh_real
 
         # Compute the hypsometric loss as the mean squared error between expected and actual thickness.
         hypsometric_loss = torch.mean((actual_thickness - expected_thickness) ** 2)
 
         return hypsometric_loss
+
+class HydrostaticLoss(nn.Module):
+    def __init__(self, gravity=9.80665, Rd=287.0):
+        super().__init__()
+        self.gravity = gravity
+        self.Rd = Rd
+        self.register_buffer("hpa_to_pa", torch.tensor(100.0))  # For unit conversion
+
+    def forward(self, T_real, gh_real, pde_inputs):
+        """
+        Args:
+            T_real: (N,1) Predicted temperature in Kelvin
+            gh_real: (N,) Geopotential height in meters (MUST be float32 and require grad)
+            pde_inputs: Dict containing:
+                - pressure_level: (N,1) Pressure in hPa
+                - specific_humidity: (N,1) kg/kg
+        """
+        # Virtual temperature calculation
+        q = pde_inputs["specific_humidity"]
+        T_v = T_real * (1 + 0.61 * q)  # (N,1)
+
+        # Hydrostatic balance equation components
+        p_pa = pde_inputs["pressure_level"] * self.hpa_to_pa  # (N,1)
+        expected_dT_dz = - (p_pa * self.gravity) / (self.Rd * T_v)  # (N,1)
+
+        # Compute gradient dT/dz (requires gh_real to have requires_grad=True)
+        gh_real = gh_real.unsqueeze(-1)  # (N,1)
+        dT = torch.autograd.grad(
+            outputs=T_real,
+            inputs=gh_real,
+            grad_outputs=torch.ones_like(T_real),
+            create_graph=True,  # Critical for backprop
+            retain_graph=True,
+            allow_unused=False
+        )[0]  # (N,1)
+
+        # Calculate MSE loss
+        return torch.mean((dT - expected_dT_dz)**2)
 
 
 class INRLoggerCallback(pl.Callback):
@@ -182,7 +223,7 @@ class INRLoggerCallback(pl.Callback):
         epoch = trainer.current_epoch
         print(f"Starting Epoch {epoch}")
 
-    def on_train_batch_end(self, trainer, pl_module, batch_idx, dataloader_idx):
+    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
 
         debug_print()
         current_metrics = trainer.callback_metrics
@@ -191,15 +232,11 @@ class INRLoggerCallback(pl.Callback):
                 metric_value = current_metrics[metric].item()
                 if (self.mode == "min" and metric_value < self.best_metrics[metric]) or \
                         (self.mode == "max" and metric_value > self.best_metrics[metric]):
-                    self.best_metrics[metric] = metric_value  # Update best metric
+                    self.best_metrics[metric] = metric_value
                     checkpoint_path = os.path.join(self.save_path, f"best_{metric}.ckpt")
-
-                    # Save model checkpoint
                     trainer.save_checkpoint(checkpoint_path)
-                    print(
-                        f"New best {metric}: {metric_value:.6f} at batch {batch_idx}. Model saved to {checkpoint_path}")
+                    print(f"New best {metric}: {metric_value:.6f} at batch {batch_idx}. Saved to {checkpoint_path}")
 
-                # Log to WandB
                 wandb.log({metric: metric_value})
 
     def on_train_epoch_end(self, trainer, pl_module):

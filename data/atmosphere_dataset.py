@@ -1,5 +1,5 @@
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, IterableDataset
 import xarray as xr
 import numpy as np
 from helpers import debug_print
@@ -15,7 +15,8 @@ class AtmosphereDataset(Dataset):
             config: OmegaConf config with dataset settings.
         """
         debug_print()
-        self.nc_file = config.dataset.nc_file
+        self.nc_file = config.nc_file
+        self.points_per_batch = config.get("points_per_batch", 500000)
 
         # open dataset
         self.ds = self._open_dataset()
@@ -38,7 +39,7 @@ class AtmosphereDataset(Dataset):
         return xr.open_dataset(
             self.nc_file,
             chunks={"valid_time" :1},
-            engine="h5netcdf",
+            engine="netcdf4",
             decode_times=False
         )
 
@@ -151,3 +152,64 @@ class AtmosphereDataset(Dataset):
             "pde_inputs": pde_inputs_dict
         }
 
+
+class AtmosphereIterableDataset(IterableDataset):
+    def __init__(self, config):
+        super().__init__()
+        self.nc_file = config.nc_file
+        self.points_per_batch = config.points_per_batch
+        self.K_min, self.K_max = 183, 330
+        self.gh_min, self.gh_max = -428.6875, 48664.082
+
+    def __iter__(self):
+        # Open dataset INSIDE iterator
+        with xr.open_dataset(self.nc_file, engine="netcdf4") as ds:
+            # Precompute static grids
+            pressure_grid, lat_grid, lon_grid = np.meshgrid(
+                ds.pressure_level.values,
+                ds.latitude.values,
+                ds.longitude.values,
+                indexing="ij"
+            )
+
+            # Convert to Cartesian
+            lat_rad = np.deg2rad(lat_grid)
+            lon_rad = np.deg2rad(lon_grid - 180)
+            x_flat = (np.cos(lat_rad) * np.cos(lon_rad)).ravel()
+            y_flat = (np.cos(lat_rad) * np.sin(lon_rad)).ravel()
+            z_flat = np.sin(lat_rad).ravel()
+            pressure_flat = pressure_grid.ravel()
+
+            # Load time-dependent data
+            temp_data = ds.t.load().values
+            z_data = ds.z.load().values
+            q_data = ds.q.load().values
+            gh_base_data = ds.z.sel(pressure_level=1000).load().values
+
+            for time_idx in range(len(ds.valid_time)):
+                # Process timestep
+                temp = temp_data[time_idx].ravel()
+                gh = z_data[time_idx].ravel()
+                q = q_data[time_idx].ravel()
+                gh_base = gh_base_data[time_idx].ravel()
+
+                # Normalize
+                temp_norm = 2 * (temp - self.K_min) / (self.K_max - self.K_min) - 1
+                gh_norm = 2 * (gh - self.gh_min) / (self.gh_max - self.gh_min) - 1
+
+                # Build batch
+                inputs = np.column_stack([gh_norm, x_flat, y_flat, z_flat])
+                indices = np.random.choice(inputs.shape[0], self.points_per_batch, False)
+
+                yield {
+                    "inputs": torch.as_tensor(inputs[indices], dtype=torch.float32),
+                    "target": torch.as_tensor(temp_norm[indices], dtype=torch.float32).unsqueeze(1),
+                    "pde_inputs": {
+                        "pressure_level": torch.as_tensor(pressure_flat[indices], dtype=torch.float32).unsqueeze(1),
+                        "specific_humidity": torch.as_tensor(q[indices], dtype=torch.float32).unsqueeze(1),
+                        "base_geopotential_height": torch.as_tensor(
+                            np.repeat(gh_base, len(ds.pressure_level))[indices],
+                            dtype=torch.float32
+                        ).unsqueeze(1),
+                    }
+                }
