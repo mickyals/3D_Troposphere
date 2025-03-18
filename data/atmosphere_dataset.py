@@ -172,6 +172,8 @@ class AtmosphereIterableDataset(IterableDataset):
                 indexing="ij"
             )
 
+            print(ds, type(ds))
+
             # Convert to Cartesian
             lat_rad = np.deg2rad(lat_grid)
             lon_rad = np.deg2rad(lon_grid - 180)
@@ -184,6 +186,7 @@ class AtmosphereIterableDataset(IterableDataset):
             temp_data = ds.t.load().values
             z_data = ds.z.load().values
             q_data = ds.q.load().values
+            # q_data = np.full(z_data.shape, 5e-9)
             gh_base_data = ds.z.sel(pressure_level=1000).load().values
 
             for time_idx in range(len(ds.valid_time)):
