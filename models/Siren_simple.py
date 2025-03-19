@@ -8,6 +8,8 @@ from PIL import Image
 #from torchvision.transforms import Resize, Compose, ToTensor, Normalize
 import numpy as np
 import matplotlib.pyplot as plt
+from helpers import debug_print
+
 
 import time
 
@@ -60,21 +62,27 @@ class SineLayer(nn.Module):
     
     
 class Siren(nn.Module):
-    def __init__(self, in_features, hidden_features, hidden_layers, out_features, outermost_linear=False, 
-                 first_omega_0=30, hidden_omega_0=30.):
+    def __init__(self, config):
         super().__init__()
-        
-        # self.fomega = nn.Parameter(150*torch.rand([1])).to(device)
-        # self.homega = nn.Parameter(150*torch.rand([1])).to(device)
+        debug_print()
+        self.config = config
+        in_features = self.config.in_features
+        out_features = self.config.out_features
+        hidden_layers = self.config.num_hidden_layers
+        outermost_linear = self.config.outermost_linear
+        hidden_features = self.config.hidden_size
+        first_omega = self.config.init_params.w0
+        hidden_omega = self.config.init_params.w1
+        activation = self.config.init_params.activation
 
         self.net = []
         self.net.append(SineLayer(in_features, hidden_features, 
-                                  is_first=True, omega_0=first_omega_0))
+                                  is_first=True, omega_0=first_omega))
         dropout = nn.Dropout(p=0.2)
         
         for i in range(hidden_layers):
             self.net.append(SineLayer(hidden_features, hidden_features, 
-                                      is_first=False, omega_0=hidden_omega_0))
+                                      is_first=False, omega_0=hidden_omega))
         # self.net.append(dropout)
         if outermost_linear:
             final_linear = nn.Linear(hidden_features, out_features)
@@ -82,17 +90,18 @@ class Siren(nn.Module):
             with torch.no_grad():
                 # final_linear.weight.uniform_(-np.sqrt(6 / hidden_features) / self.homega[0], 
                 #                               np.sqrt(6 / hidden_features) / self.homega[0])
-                final_linear.weight.uniform_(-np.sqrt(6 / hidden_features) / hidden_omega_0, 
-                                             np.sqrt(6 / hidden_features) / hidden_omega_0)
+                final_linear.weight.uniform_(-np.sqrt(6 / hidden_features) / hidden_omega, 
+                                             np.sqrt(6 / hidden_features) / hidden_omega)
                 
             self.net.append(final_linear)
         else:
             self.net.append(SineLayer(hidden_features, out_features, 
-                                      is_first=False, omega_0=hidden_omega_0))
+                                      is_first=False, omega_0=hidden_omega))
         
         self.net = nn.Sequential(*self.net)
+        print(self.net)
     
     def forward(self, coords):
         coords = coords.clone().detach().requires_grad_(True) # allows to take derivative w.r.t. input
         output = self.net(coords)
-        return output, coords        
+        return output        
