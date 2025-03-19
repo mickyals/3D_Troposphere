@@ -1,199 +1,143 @@
 import torch
-from torch.utils.data import Dataset, IterableDataset
+from torch.utils.data import IterableDataset
 import xarray as xr
 import numpy as np
-from helpers import debug_print
+from helpers import debug_print, set_device
 
-
-
-
-class AtmosphereDataset(Dataset):
+class AtmosphereDataset(IterableDataset):
     def __init__(self, config):
         """
-        Initialize dataset from a configuration file.
         Args:
-            config: OmegaConf config with dataset settings.
+            config: Configuration (e.g., OmegaConf dict) with keys:
+              - nc_file: path to the preprocessed NetCDF file
+              - batch_size: number of points per mini-batch
         """
         debug_print()
         self.nc_file = config.nc_file
-        self.points_per_batch = config.get("points_per_batch", 500000)
+        self.batch_size = config.batch_size
+        self.device = set_device()
 
-        # open dataset
-        self.ds = self._open_dataset()
+        # Normalization ranges (for possible denormalization if needed)
+        self.temp_range = (183.0, 330.0)         # for t (in Kelvin)
+        self.gh_range = (-428.6875, 48664.082)     # for z (in meters)
 
-        # Extract dimensions
-        self.time_dim = len(self.ds["valid_time"])
-        self.pressure_dim = len(self.ds["pressure_level"])
-        self.lat_dim = len(self.ds["latitude"])
-        self.lon_dim = len(self.ds["longitude"])
+        # Open file briefly to extract dimensions
+        with xr.open_dataset(self.nc_file, engine="netcdf4", decode_times=False) as ds:
+            self.num_timesteps = len(ds.valid_time)
+            self.num_pressure = len(ds.pressure_level)
+            self.num_lat = len(ds.latitude)
+            self.num_lon = len(ds.longitude)
 
-        # Convert coordinate variables to numpy arrays
-        self.valid_time = self.ds["valid_time"].values
-        self.pressure_levels = self.ds["pressure_level"].values
-        self.latitudes = self.ds["latitude"].values
-        self.longitudes = self.ds["longitude"].values
+        # Total points per time step
+        self.points_per_timestep = self.num_pressure * self.num_lat * self.num_lon
+        self.batches_per_timestep = int(np.ceil(self.points_per_timestep / self.batch_size))
 
-        # Total points per timestep
-        self.total_points = self.pressure_dim * self.lat_dim * self.lon_dim
-        self.batches_per_timestep = self.total_points // self.points_per_batch
+        # Precompute static spatial grid and pressure array (on CPU)
+        self._precompute_static_data()
 
+    def _precompute_static_data(self):
+        """Precompute the spatial grid from latitude and longitude and the pressure values."""
+        with xr.open_dataset(self.nc_file, engine="netcdf4", decode_times=False) as ds:
+            lats = ds.latitude.values.astype(np.float32)  # shape (num_lat,)
+            lons = ds.longitude.values.astype(np.float32)  # shape (num_lon,)
+            pressures = ds.pressure_level.values.astype(np.float32)  # shape (num_pressure,)
 
-    def _open_dataset(self):
-        """Open the NetCDF file with chunking along time dimension"""
-        debug_print()
-        return xr.open_dataset(
-            self.nc_file,
-            chunks={"valid_time" :1},
-            engine="netcdf4",
-            decode_times=False
-        )
+        # Create 2D grid for spatial coordinates
+        lon_grid, lat_grid = np.meshgrid(lons, lats, indexing="ij")  # shape (num_lon, num_lat)
+        # Convert longitudes from [0, 360] to [-180, 180]
+        lon_centered = lon_grid - 180.0
 
-    def __len__(self):
-        debug_print()
-        """Total batches in one epoch = time_dim * batches_per_timestep"""
-        return self.time_dim * self.batches_per_timestep
-
-
-
-    def __getitem__(self, index):
-        """
-        Retrieve all (lat, lon, pressure) samples for a given time step,
-        then flatten and randomly shuffle them. In this version, the network
-        inputs are:
-             [normalized geopotential height, x_coord, y_coord, z_coord],
-        while PDE inputs include the real pressure, geopotential height,
-        specific humidity, and the base geopotential height (at 1000 mb).
-        """
-        # Select the current time step using the valid_time coordinate.
-        debug_print()
-        # Determine which time step this batch belongs to
-        time_idx = index // self.batches_per_timestep
-        batch_offset = index % self.batches_per_timestep
-
-        # Select the current time step
-        current_timestep = self.valid_time[time_idx]
-
-        # Extract the 3D fields for this time step
-        temp = self.ds["t"].sel(valid_time=current_timestep).values
-        geopotential_height = self.ds["z"].sel(valid_time=current_timestep).values
-        specific_humidity = self.ds["q"].sel(valid_time=current_timestep).values
-        gh_base_2d = self.ds["z"].sel(valid_time=current_timestep, pressure_level=1000).values
-
-        # Create spatial grids
-        pressure_grid, lat_grid, lon_grid = np.meshgrid(
-            self.pressure_levels, self.latitudes, self.longitudes, indexing="ij"
-        )
-
-        # Compute Cartesian coordinates
+        # Convert to radians
         lat_rad = np.deg2rad(lat_grid)
-        lon_rad = np.deg2rad(lon_grid - 180)
-        x_coord = np.cos(lat_rad) * np.cos(lon_rad)
-        y_coord = np.cos(lat_rad) * np.sin(lon_rad)
-        z_coord = np.sin(lat_rad)
+        lon_rad = np.deg2rad(lon_centered)
 
-        # Normalization
-        K_min, K_max = 183, 330
-        gh_min, gh_max = -428.6875, 48664.082
+        # Compute Cartesian coordinates (spherical to Cartesian on unit sphere)
+        cos_lat = np.cos(lat_rad)
+        x = (cos_lat * np.cos(lon_rad)).astype(np.float32)
+        y = (cos_lat * np.sin(lon_rad)).astype(np.float32)
+        z = np.sin(lat_rad).astype(np.float32)
 
-        temp_norm = 2 * (temp - K_min) / (K_max - K_min) - 1
-        gh_norm = 2 * (geopotential_height - gh_min) / (gh_max - gh_min) - 1
+        # Flatten the 2D spatial grid (order: C-order, so that the fastest axis is longitude)
+        x_flat = x.ravel()  # shape: (num_lat * num_lon,)
+        y_flat = y.ravel()
+        z_flat = z.ravel()
 
-        # Flatten arrays
-        inputs_array = np.stack([
-            gh_norm.flatten(),
-            x_coord.flatten(),
-            y_coord.flatten(),
-            z_coord.flatten()
-        ], axis=1)
-
-        target_array = temp_norm.flatten()
-
-        # PDE inputs
-        pde_pressure = pressure_grid.flatten()
-        pde_geopotential = geopotential_height.flatten()
-        pde_specific_humidity = specific_humidity.flatten()
-        gh_base_flat = gh_base_2d.flatten()
-        gh_base_repeated = np.tile(gh_base_flat, self.pressure_dim)
-
-        # **Sequential Sampling: Select points in order**
-        batch_start = batch_offset * self.points_per_batch
-        batch_end = batch_start + self.points_per_batch
-        batch_indices = np.arange(batch_start, batch_end)
-
-        # Sample the batch (NO SHUFFLING)
-        inputs_tensor = torch.tensor(inputs_array[batch_indices], dtype=torch.float32)
-        target_tensor = torch.tensor(target_array[batch_indices], dtype=torch.float32).unsqueeze(1)
-
-        pde_inputs_dict = {
-            "pressure_level": torch.tensor(pde_pressure[batch_indices], dtype=torch.float32).unsqueeze(1),
-            "geopotential_height": torch.tensor(pde_geopotential[batch_indices], dtype=torch.float32).unsqueeze(1),
-            "specific_humidity": torch.tensor(pde_specific_humidity[batch_indices], dtype=torch.float32).unsqueeze(1),
-            "base_geopotential_height": torch.tensor(gh_base_repeated[batch_indices], dtype=torch.float32).unsqueeze(1)
+        # Tile the spatial coordinates for each pressure level.
+        # Each time step has total points = num_pressure * num_lat * num_lon.
+        self.static_grid = {
+            "x": torch.from_numpy(np.tile(x_flat, self.num_pressure)),
+            "y": torch.from_numpy(np.tile(y_flat, self.num_pressure)),
+            "z": torch.from_numpy(np.tile(z_flat, self.num_pressure))
         }
 
-        return {
-            "inputs": inputs_tensor,
-            "target": target_tensor,
-            "pde_inputs": pde_inputs_dict
+        # Pressure values: for each pressure level, repeat for all spatial locations.
+        pressure_repeated = np.repeat(pressures, self.num_lat * self.num_lon)
+        self.static_pressure = torch.from_numpy(pressure_repeated)
+
+    def _load_time_step(self, time_idx):
+        """Load time-dependent variables for a given time step."""
+        with xr.open_dataset(self.nc_file, engine="netcdf4", decode_times=False) as ds:
+            ts = ds.isel(valid_time=time_idx).load()  # load the full time slice
+
+            # Raw variables (shape: [num_pressure, num_lat, num_lon])
+            t = ts.t.values.astype(np.float32)
+            z = ts.z.values.astype(np.float32)
+            q = ts.q.values.astype(np.float32)
+            # Normalized variables
+            t_norm = ts.t_norm.values.astype(np.float32)
+            z_norm = ts.z_norm.values.astype(np.float32)
+            # Base geopotential: select slice at pressure level 1000 (shape: [num_lat, num_lon])
+            gh_base = ts.z.sel(pressure_level=1000).values.astype(np.float32)
+
+        # Flatten arrays (using C-order so that order is [pressure, lat, lon])
+        time_data = {
+            "t": torch.as_tensor(t.ravel(), dtype=torch.float32),
+            "z": torch.as_tensor(z.ravel(), dtype=torch.float32),
+            "q": torch.as_tensor(q.ravel(), dtype=torch.float32),
+            "t_norm": torch.as_tensor(t_norm.ravel(), dtype=torch.float32),
+            "z_norm": torch.as_tensor(z_norm.ravel(), dtype=torch.float32),
+            # For gh_base: repeat the flattened (lat,lon) array for each pressure level
+            "gh_base": torch.as_tensor(np.repeat(gh_base.ravel(), self.num_pressure), dtype=torch.float32)
         }
+        return time_data
 
+    def _create_batch(self, time_data, batch_idx):
+        """Construct a mini-batch from loaded time_data."""
+        start = batch_idx * self.batch_size
+        end = start + self.batch_size
 
-class AtmosphereIterableDataset(IterableDataset):
-    def __init__(self, config):
-        super().__init__()
-        self.nc_file = config.nc_file
-        self.points_per_batch = config.points_per_batch
-        self.K_min, self.K_max = 183, 330
-        self.gh_min, self.gh_max = -428.6875, 48664.082
+        # Inputs: [x, y, z, z_norm]
+        # Static grid data are precomputed
+        x_batch = self.static_grid["x"][start:end]
+        y_batch = self.static_grid["y"][start:end]
+        z_batch = self.static_grid["z"][start:end]
+        # z_norm is dynamic per time step (loaded from NC)
+        z_norm_batch = time_data["z_norm"][start:end]
+        inputs = torch.stack([x_batch, y_batch, z_batch, z_norm_batch], dim=1)
+
+        # Target: normalized temperature t_norm
+        target = time_data["t_norm"][start:end].unsqueeze(1)
+
+        # PDE inputs: raw z, q, t, and static pressure, plus base geopotential
+        pde_inputs = {
+            "pressure_level": self.static_pressure[start:end].unsqueeze(1),
+            "z": time_data["z"][start:end].unsqueeze(1),
+            "q": time_data["q"][start:end].unsqueeze(1),
+            "t": time_data["t"][start:end].unsqueeze(1),
+            "gh_base": time_data["gh_base"][start:end].unsqueeze(1)
+        }
+        return {"inputs": inputs, "target": target, "pde_inputs": pde_inputs}
 
     def __iter__(self):
-        with xr.open_dataset(self.nc_file, engine="netcdf4") as ds:
-            # Iterate over timesteps
-            for time_idx in range(len(ds.valid_time)):
-                # Process only this timestep (lazy loading)
-                temp = ds.t.isel(valid_time=time_idx).values
-                gh = ds.z.isel(valid_time=time_idx).values
-                q = ds.q.isel(valid_time=time_idx).values
-                gh_base = ds.z.sel(pressure_level=1000).isel(valid_time=time_idx).values
+        """Iterate over each time step and yield mini-batches."""
+        for time_idx in range(self.num_timesteps):
+            debug_print()
+            time_data = self._load_time_step(time_idx)
+            for batch_idx in range(self.batches_per_timestep):
+                yield self._create_batch(time_data, batch_idx)
+            # Optional: clear GPU cache after each time step
+            torch.cuda.empty_cache() if torch.cuda.is_available() else None
 
-                # Meshgrid for coordinates (only once)
-                pressure_levels = ds.pressure_level.values
-                latitudes = ds.latitude.values
-                longitudes = ds.longitude.values
-                pressure_grid, lat_grid, lon_grid = np.meshgrid(pressure_levels, latitudes, longitudes, indexing="ij")
-
-                # Convert to Cartesian coordinates (only once)
-                lat_rad = np.deg2rad(lat_grid)
-                lon_rad = np.deg2rad(lon_grid - 180)
-                x_flat = (np.cos(lat_rad) * np.cos(lon_rad)).astype(np.float32).ravel()
-                y_flat = (np.cos(lat_rad) * np.sin(lon_rad)).astype(np.float32).ravel()
-                z_flat = np.sin(lat_rad).astype(np.float32).ravel()
-                pressure_flat = pressure_grid.astype(np.float32).ravel()
-
-                # Normalize temperature and geopotential height
-                temp_norm = (2 * (temp - self.K_min) / (self.K_max - self.K_min) - 1).astype(np.float32).ravel()
-                gh_norm = (2 * (gh - self.gh_min) / (self.gh_max - self.gh_min) - 1).astype(np.float32).ravel()
-                q_flat = q.astype(np.float32).ravel()
-                gh_base_flat = np.repeat(gh_base, len(pressure_levels)).astype(np.float32)
-
-                total_points = temp_norm.shape[0]
-
-                # **Batch processing instead of full loading**
-                for i in range(0, total_points, self.points_per_batch):
-                    batch_indices = slice(i, min(i + self.points_per_batch, total_points))  # Safe indexing
-                    yield {
-                        "inputs": torch.tensor(np.column_stack([
-                            gh_norm[batch_indices], x_flat[batch_indices],
-                            y_flat[batch_indices], z_flat[batch_indices]
-                        ]), dtype=torch.float32),
-
-                        "target": torch.tensor(temp_norm[batch_indices], dtype=torch.float32).unsqueeze(1),
-
-                        "pde_inputs": {
-                            "pressure_level": torch.tensor(pressure_flat[batch_indices], dtype=torch.float32).unsqueeze(
-                                1),
-                            "specific_humidity": torch.tensor(q_flat[batch_indices], dtype=torch.float32).unsqueeze(1),
-                            "base_geopotential_height": torch.tensor(gh_base_flat[batch_indices],
-                                                                     dtype=torch.float32).unsqueeze(1),
-                        }
-                    }
+    def __len__(self):
+        """Total number of mini-batches across all time steps."""
+        return self.num_timesteps * self.batches_per_timestep
