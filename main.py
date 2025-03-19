@@ -13,6 +13,10 @@ from point_cloud_generator.pointcloudgenerator import PointCloudGenerator  # Ens
 from models import *
 import wandb
 
+if torch.cuda.is_available():
+    torch.cuda.empty_cache()
+    print(torch.cuda.memory_summary())
+
 # ---------------- Step 1: Argument Parsing ----------------
 def get_parser():
     """Set up argument parsing for main.py"""
