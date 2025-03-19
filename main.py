@@ -6,9 +6,9 @@ from pytorch_lightning import seed_everything
 from pytorch_lightning.loggers import WandbLogger
 from omegaconf import OmegaConf
 from datetime import datetime
-from data import  AtmosphereIterableDataset
+from data import  AtmosphereIterableDataset, AtmosphereDataset
 from torch.utils.data import DataLoader
-from helpers import debug_print, init_wandb
+from helpers import debug_print, set_device
 from point_cloud_generator.pointcloudgenerator import PointCloudGenerator  # Ensure this is implemented
 from models import *
 import wandb
@@ -48,6 +48,7 @@ class AtmosphereDataModule(pl.LightningDataModule):
             self.train_dataset,
             batch_size=self.batch_size,
             num_workers=self.num_workers,
+            prefetch_factor=self.config.prefetch_factor,
             pin_memory=True,
             persistent_workers=False
         )
@@ -68,7 +69,7 @@ if __name__ == "__main__":
     data_module = AtmosphereDataModule(config)
 
     # Instantiate Model
-    model = INRModel(config)
+    model = INRModel(config).to(set_device())
 
     # Callback setup
     callback_cfg = config.trainer.callbacks.INRLoggerCallback
@@ -87,7 +88,7 @@ if __name__ == "__main__":
         project=wandb_cfg.project,
         entity=wandb_cfg.entity,
         name=f"INR_Training_{model_name}_{run_name_date}",
-        log_model="all"  # More efficient than True
+        log_model=True
     )
 
     # Optimized Trainer configuration
@@ -100,6 +101,7 @@ if __name__ == "__main__":
         deterministic=False,  # Faster but maintains reproducibility
         callbacks=[logger_callback],
         logger=wandb_logger,
+        log_every_n_steps=10,
         enable_progress_bar=True,  # Disable if using in notebook
         enable_checkpointing=True,
         use_distributed_sampler=False,  # For IterableDataset

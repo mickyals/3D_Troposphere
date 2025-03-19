@@ -4,3 +4,7 @@ venv/
 .DS_Store
 __pycache__/
 */__pycache__/
+3D_Atmosphere/
+checkpoints/
+wandb/
+debug_log_*.txt
