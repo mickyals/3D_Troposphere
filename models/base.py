@@ -5,13 +5,13 @@ from utils import instantiate_from_config
 import time
 import wandb
 import os
-from helpers import set_seed, debug_print
+from helpers import set_seed, debug_print, set_device
 
 
 
 
 class INRModel(pl.LightningModule):
-    def __init__(self, config):
+    def __init__(self, config, device=None):
         """
     Base PINN model that instantiates the INR network dynamically from config,
     and includes PDE-based losses (hydrostatic loss and hypsometric regularizer).
@@ -44,13 +44,13 @@ class INRModel(pl.LightningModule):
 
     def forward(self, x):
         debug_print()
-        return self.net(x)
+        return self.net(x.to(self.device))
 
     def training_step(self, batch, batch_idx):
         # Keep inputs as float32 but enable gradients
-        inputs = batch['inputs'].requires_grad_(True)  # [norm_gh, x, y, z]
-        target = batch['target']
-        pde_inputs = batch['pde_inputs']
+        inputs = batch['inputs'].to(self.device, non_blocking=True)  # [norm_gh, x, y, z]
+        target = batch['target'].to(self.device, non_blocking=True)
+        pde_inputs = {k: v.to(self.device) for k, v in batch["pde_inputs"].items()}
 
         # Forward pass (predicts normalized temperature)
         pred_norm = self.forward(inputs)  # Uses normalized inputs
@@ -72,7 +72,7 @@ class INRModel(pl.LightningModule):
         total_loss = data_loss #+ self.physics_weight*physics_loss + self.regularizer_weight*physics_regulariser
 
         # logging into wandb
-        self.log("train/data_loss", data_loss, on_step=True, on_epoch=True)
+        self.log("train/data_loss", data_loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         #self.log("train/physics_loss", physics_loss, on_step=True, on_epoch=True)
         #self.log("train/physics_regulariser", physics_regulariser, on_step=True, on_epoch=True)
         #self.log("train/total_loss", total_loss, on_step=True, on_epoch=True)

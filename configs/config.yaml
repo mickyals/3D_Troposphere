@@ -2,12 +2,12 @@ seed: 3
 run_name: "test"
 
 dataset:
-  nc_file: "/w/nobackup/385/scratch-space/expires-2025-Apr-01/3D_atmosphere_updated_z.nc"
-  batch_size: 1 # Kept as 1 since points_per_batch controls actual batch size when using iterabledataset
+  nc_file: "C:/Users/micke/Downloads/3D_atmosphere_updated_z.nc"
+  batch_size: 1
   points_per_batch: 500000 # dataset is define as 2
   shuffle: False
-  num_workers: 0
-  prefetch_factor: 24
+  num_workers: 5
+  prefetch_factor: 1
   variables:
     inputs: 
       geopotential_height: "z"
