@@ -6,7 +6,7 @@ from pytorch_lightning import seed_everything
 from pytorch_lightning.loggers import WandbLogger
 from omegaconf import OmegaConf
 from datetime import datetime
-from data import  AtmosphereIterableDataset, AtmosphereDataset
+from data import AtmosphereDataset
 from torch.utils.data import DataLoader
 from helpers import debug_print, set_device
 from point_cloud_generator.pointcloudgenerator import PointCloudGenerator  # Ensure this is implemented
@@ -39,23 +39,26 @@ class AtmosphereDataModule(pl.LightningDataModule):
         self.config = config.dataset
         self.batch_size = self.config.batch_size
         self.num_workers = self.config.num_workers
-        self.shuffle = self.config.shuffle
+        self.prefetch_factor = self.config.prefetch_factor
 
     def setup(self, stage=None):
         """Initialize dataset (only training set)."""
         debug_print()
-        self.train_dataset =  AtmosphereIterableDataset(self.config)
+        self.train_dataset =  AtmosphereDataset(self.config)
 
     def train_dataloader(self):
-        """Returns DataLoader for training."""
         return DataLoader(
             self.train_dataset,
-            batch_size=self.batch_size,
+            batch_size=None,  # Crucial for IterableDataset
             num_workers=self.num_workers,
-            prefetch_factor=self.config.prefetch_factor,
+            prefetch_factor=self.prefetch_factor,
             pin_memory=True,
-            persistent_workers=False
+            persistent_workers=self.num_workers > 0
         )
+
+    def on_train_epoch_end(self):
+        """Essential for multi-epoch training"""
+        self.train_dataset.reset()
 
 # ---------------- Step 3: Main Execution ----------------
 if __name__ == "__main__":

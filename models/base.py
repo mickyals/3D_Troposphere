@@ -210,6 +210,7 @@ class INRLoggerCallback(pl.Callback):
 
         # Track time
         self.total_start_time = None
+        self.total_points= 0
 
     def on_train_start(self, trainer, pl_module):
         """record start time"""
@@ -220,12 +221,17 @@ class INRLoggerCallback(pl.Callback):
     def on_train_epoch_start(self, trainer, pl_module):
         """Records the epoch logs it."""
         debug_print()
+        self.total_points = 0
         epoch = trainer.current_epoch
         print(f"Starting Epoch {epoch}")
 
     def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
 
         debug_print()
+
+        # Count points processed in this batch
+        batch_size = batch["inputs"].shape[0]  # Assuming batch["inputs"] contains spatial points
+        self.total_points += batch_size
         current_metrics = trainer.callback_metrics
         for metric in self.monitor_metrics:
             if metric in current_metrics:
@@ -235,7 +241,7 @@ class INRLoggerCallback(pl.Callback):
                     self.best_metrics[metric] = metric_value
                     checkpoint_path = os.path.join(self.save_path, f"best_{metric}.ckpt")
                     trainer.save_checkpoint(checkpoint_path)
-                    print(f"New best {metric}: {metric_value:.6f} at batch {batch_idx}. Saved to {checkpoint_path}")
+                    #print(f"New best {metric}: {metric_value:.6f} at batch {batch_idx}. Saved to {checkpoint_path}")
 
                 wandb.log({metric: metric_value})
 
@@ -243,7 +249,9 @@ class INRLoggerCallback(pl.Callback):
         """Prints, logs, and calculates epoch time."""
         debug_print()
         epoch = trainer.current_epoch
-        print(f"Finished Epoch {epoch}")
+        print(f"Finished Epoch {epoch}. Total points processed: {self.total_points}")
+
+        wandb.log({"total_points_epoch": self.total_points})
 
     def on_train_end(self, trainer, pl_module):
         """Calculates and logs total training time."""
