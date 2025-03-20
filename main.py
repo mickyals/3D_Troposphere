@@ -6,7 +6,7 @@ from pytorch_lightning import seed_everything
 from pytorch_lightning.loggers import WandbLogger
 from omegaconf import OmegaConf
 from datetime import datetime
-from data import AtmosphereDataset
+from data import AtmosphereDataset, AtmosphereIterableDataset
 from torch.utils.data import DataLoader
 from helpers import debug_print, set_device
 from point_cloud_generator.pointcloudgenerator import PointCloudGenerator  # Ensure this is implemented
@@ -44,7 +44,7 @@ class AtmosphereDataModule(pl.LightningDataModule):
     def setup(self, stage=None):
         """Initialize dataset (only training set)."""
         debug_print()
-        self.train_dataset =  AtmosphereDataset(self.config)
+        self.train_dataset =  AtmosphereIterableDataset(self.config)
 
     def train_dataloader(self):
         return DataLoader(

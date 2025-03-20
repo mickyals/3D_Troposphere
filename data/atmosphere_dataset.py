@@ -141,3 +141,122 @@ class AtmosphereDataset(IterableDataset):
     def __len__(self):
         """Total number of mini-batches across all time steps."""
         return self.num_timesteps * self.batches_per_timestep
+
+
+class AtmosphereIterableDataset(IterableDataset):
+    def __init__(self, config):
+        debug_print()
+        self.nc_file = config.nc_file
+        self.batch_size = config.batch_size
+        self.device = set_device()
+
+        # Open dataset briefly to get dimensions
+        with xr.open_dataset(self.nc_file, engine="netcdf4", decode_times=False) as ds:
+            self.num_timesteps = len(ds.valid_time)
+            self.num_pressure = len(ds.pressure_level)
+            self.num_lat = len(ds.latitude)
+            self.num_lon = len(ds.longitude)
+
+        # Total points per time step
+        self.points_per_timestep = self.num_pressure * self.num_lat * self.num_lon
+        self.batches_per_timestep = int(np.ceil(self.points_per_timestep / self.batch_size))
+
+        # Precompute static spatial grid and pressure array
+        self._precompute_static_data()
+
+    def _precompute_static_data(self):
+        """Precompute static spatial grid and pressure levels."""
+        with xr.open_dataset(self.nc_file, engine="netcdf4", decode_times=False) as ds:
+            lats = ds.latitude.values.astype(np.float32)
+            lons = ds.longitude.values.astype(np.float32)
+            pressures = ds.pressure_level.values.astype(np.float32)
+
+        lon_grid, lat_grid = np.meshgrid(lons, lats, indexing="ij")
+        lon_centered = lon_grid - 180.0
+
+        lat_rad = np.deg2rad(lat_grid)
+        lon_rad = np.deg2rad(lon_centered)
+
+        cos_lat = np.cos(lat_rad)
+        x = (cos_lat * np.cos(lon_rad)).astype(np.float32)
+        y = (cos_lat * np.sin(lon_rad)).astype(np.float32)
+        z = np.sin(lat_rad).astype(np.float32)
+
+        x_flat = x.ravel()
+        y_flat = y.ravel()
+        z_flat = z.ravel()
+
+        # Store static variables
+        self.static_grid = {
+            "x": np.tile(x_flat, self.num_pressure),
+            "y": np.tile(y_flat, self.num_pressure),
+            "z": np.tile(z_flat, self.num_pressure),
+        }
+
+        self.static_pressure = np.repeat(pressures, self.num_lat * self.num_lon)
+
+    def _load_time_step(self, time_idx):
+        """Load and normalize all variables for a single timestep."""
+        with xr.open_dataset(self.nc_file, engine="netcdf4", decode_times=False) as ds:
+            ts = ds.isel(valid_time=time_idx).load()
+
+            t = ts.t.values.astype(np.float32).ravel()
+            z = ts.z.values.astype(np.float32).ravel()
+            q = ts.q.values.astype(np.float32).ravel()
+            t_norm = ts.t_norm.values.astype(np.float32).ravel()
+            z_norm = ts.z_norm.values.astype(np.float32).ravel()
+            gh_base = ts.z.sel(pressure_level=1000).values.astype(np.float32)
+            gh_base_exp = np.repeat(gh_base.ravel(), self.num_pressure)
+
+        # **Shuffle all points within the time step**
+        indices = np.random.permutation(len(t))
+
+        return {
+            "t": torch.from_numpy(t[indices]),
+            "z": torch.from_numpy(z[indices]),
+            "q": torch.from_numpy(q[indices]),
+            "t_norm": torch.from_numpy(t_norm[indices]),
+            "z_norm": torch.from_numpy(z_norm[indices]),
+            "gh_base": torch.from_numpy(gh_base_exp[indices]),
+            "x": torch.from_numpy(self.static_grid["x"])[indices],
+            "y": torch.from_numpy(self.static_grid["y"])[indices],
+            "z": torch.from_numpy(self.static_grid["z"])[indices],
+            "pressure_level": torch.from_numpy(self.static_pressure)[indices],
+        }
+
+    def _create_batch(self, time_data, batch_idx):
+        """Create a mini-batch from the shuffled time step."""
+        start = batch_idx * self.batch_size
+        end = start + self.batch_size
+
+        inputs = torch.stack([
+            time_data["x"][start:end],
+            time_data["y"][start:end],
+            time_data["z"][start:end],
+            time_data["z_norm"][start:end],
+        ], dim=1)
+
+        target = time_data["t_norm"][start:end].unsqueeze(1)
+
+        pde_inputs = {
+            "pressure_level": time_data["pressure_level"][start:end].unsqueeze(1),
+            "z": time_data["z"][start:end].unsqueeze(1),
+            "q": time_data["q"][start:end].unsqueeze(1),
+            "t": time_data["t"][start:end].unsqueeze(1),
+            "gh_base": time_data["gh_base"][start:end].unsqueeze(1),
+        }
+
+        return {"inputs": inputs, "target": target, "pde_inputs": pde_inputs}
+
+    def __iter__(self):
+        """Iterate over **shuffled** time steps and yield mini-batches."""
+        time_indices = np.random.permutation(self.num_timesteps)  # Shuffle time step order
+        for time_idx in time_indices:
+            debug_print()
+            time_data = self._load_time_step(time_idx)  # **Shuffled within time step**
+            for batch_idx in range(self.batches_per_timestep):
+                yield self._create_batch(time_data, batch_idx)
+            torch.cuda.empty_cache() if torch.cuda.is_available() else None
+
+    def __len__(self):
+        return self.num_timesteps * self.batches_per_timestep
