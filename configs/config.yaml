@@ -89,7 +89,7 @@ model:
 
 
 trainer:
-   max_epochs: 1
+   max_epochs: 1000
    #accumulate_grad_batches: 4
    callbacks:
      INRLoggerCallback:
