@@ -39,7 +39,7 @@ class AtmosphereDataModule(pl.LightningDataModule):
 
     def setup(self, stage=None):
         """Initialize dataset (only training set)."""
-        debug_print()
+        #debug_print()
         self.train_dataset =  AtmosphereIterableDataset(self.config)
 
     def train_dataloader(self):

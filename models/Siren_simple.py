@@ -64,7 +64,7 @@ class SineLayer(nn.Module):
 class Siren(nn.Module):
     def __init__(self, config):
         super().__init__()
-        debug_print()
+        #debug_print()
         self.config = config
         in_features = self.config.in_features
         out_features = self.config.out_features

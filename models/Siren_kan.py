@@ -66,7 +66,7 @@ class Siren_KAN(nn.Module):
     def __init__(self, in_features, hidden_features, hidden_layers, out_features, outermost_linear=False, 
                  first_omega_0=30, hidden_omega_0=30.):
         super().__init__()
-        debug_print()
+        #debug_print()
         # self.fomega = nn.Parameter(150*torch.rand([1])).to(device)
         # self.homega = nn.Parameter(150*torch.rand([1])).to(device)
 

@@ -1,5 +1,5 @@
 seed: 3
-run_name: "test"
+run_name: "test_physics_losses"
 
 dataset:
   nc_file: "C:/Users/micke/Downloads/3D_atmosphere_preprocessed.nc"
@@ -62,7 +62,7 @@ model:
   init_params:
     w0: 30.0       # Parameter for the sine activation, if used.
     w1: 30.0 # Hidden Omega
-    activation: "finer" # finer-siren default, any other value will give basic siren - we can use this to make other finer models
+    activation: "siren" # finer-siren default "finer", any other value will give basic siren - we can use this to make other finer models
     
   optimizer_config: #default is for adam
     type: "Adam"
@@ -82,22 +82,23 @@ model:
     type: "MSELoss"
     params:
       reduction: "mean"
-      
+
+    data_weight: 1.0
     physics_weight: 1.0              
     regularizer_weight: 0.1
     regularizer_norm: "L2" # L1 (mean abs) or L2   (mean^2)
 
 
 trainer:
-   max_epochs: 1000
+   max_epochs: 2
    #accumulate_grad_batches: 4
    callbacks:
      INRLoggerCallback:
        monitor_metrics:
          - "train/data_loss"
          #- "train/physics_loss"
-         #- "train/physics_regulariser"
-         #- "train/total_loss"
+         - "train/physics_regulariser"
+         - "train/total_loss"
        mode: "min"
        save_path: "checkpoints"
        
