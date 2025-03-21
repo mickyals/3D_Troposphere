@@ -169,7 +169,7 @@ class AtmosphereIterableDataset(IterableDataset):
         with xr.open_dataset(self.nc_file, engine="netcdf4", decode_times=False) as ds:
             lats = ds.latitude.values.astype(np.float32)
             lons = ds.longitude.values.astype(np.float32)
-            pressures = ds.pressure_level.values.astype(np.float32)
+
 
         lon_grid, lat_grid = np.meshgrid(lons, lats, indexing="ij")
         lon_centered = lon_grid - 180.0
@@ -193,35 +193,35 @@ class AtmosphereIterableDataset(IterableDataset):
             "z": np.tile(z_flat, self.num_pressure),
         }
 
-        self.static_pressure = np.repeat(pressures, self.num_lat * self.num_lon)
-
     def _load_time_step(self, time_idx):
         """Load and normalize all variables for a single timestep."""
-        with xr.open_dataset(self.nc_file, engine="netcdf4", decode_times=False) as ds:
+        with xr.open_dataset(self.nc_file, engine="netcdf4", decode_times=False, drop_variables=["z"]) as ds:
             ts = ds.isel(valid_time=time_idx).load()
 
-            t = ts.t.values.astype(np.float32).ravel()
-            z = ts.z.values.astype(np.float32).ravel()
+            #z = ts.z.values.astype(np.float32).ravel()
             q = ts.q.values.astype(np.float32).ravel()
+            t = ts.t.values.astype(np.float32).ravel()
             t_norm = ts.t_norm.values.astype(np.float32).ravel()
-            z_norm = ts.z_norm.values.astype(np.float32).ravel()
-            gh_base = ts.z.sel(pressure_level=1000).values.astype(np.float32)
-            gh_base_exp = np.repeat(gh_base.ravel(), self.num_pressure)
+            gh_norm = ts.z_norm.values.astype(np.float32).ravel()
+            p1_p2_ratio = ts.p1_p2_ratio.values.astype(np.float32).ravel()
+            mean_T_v = ts.mean_T_v.values.astype(np.float32).ravel()
+            delta_z = ts.delta_z.values.astype(np.float32).ravel()
+
 
         # **Shuffle all points within the time step**
         indices = np.random.permutation(len(t))
 
         return {
-            "t": torch.from_numpy(t[indices]),
-            "z": torch.from_numpy(z[indices]),
-            "q": torch.from_numpy(q[indices]),
-            "t_norm": torch.from_numpy(t_norm[indices]),
-            "z_norm": torch.from_numpy(z_norm[indices]),
-            "gh_base": torch.from_numpy(gh_base_exp[indices]),
+            "q": torch.from_numpy(q)[indices],
+            "t": torch.from_numpy(t)[indices],
+            "t_norm": torch.from_numpy(t_norm)[indices],
+            "gh_norm": torch.from_numpy(gh_norm)[indices],
+            "p1_p2_ratio": torch.from_numpy(p1_p2_ratio)[indices],
+            "mean_T_v": torch.from_numpy(mean_T_v)[indices],
+            "delta_z": torch.from_numpy(delta_z)[indices],
             "x": torch.from_numpy(self.static_grid["x"])[indices],
             "y": torch.from_numpy(self.static_grid["y"])[indices],
             "z": torch.from_numpy(self.static_grid["z"])[indices],
-            "pressure_level": torch.from_numpy(self.static_pressure)[indices],
         }
 
     def _create_batch(self, time_data, batch_idx):
@@ -233,17 +233,17 @@ class AtmosphereIterableDataset(IterableDataset):
             time_data["x"][start:end],
             time_data["y"][start:end],
             time_data["z"][start:end],
-            time_data["z_norm"][start:end],
+            time_data["gh_norm"][start:end],
         ], dim=1)
 
         target = time_data["t_norm"][start:end].unsqueeze(1)
 
         pde_inputs = {
-            "pressure_level": time_data["pressure_level"][start:end].unsqueeze(1),
-            "z": time_data["z"][start:end].unsqueeze(1),
+            "mean_T_v": time_data["mean_T_v"][start:end].unsqueeze(1),
             "q": time_data["q"][start:end].unsqueeze(1),
-            "t": time_data["t"][start:end].unsqueeze(1),
-            "gh_base": time_data["gh_base"][start:end].unsqueeze(1),
+            "delta_z": time_data["delta_z"][start:end].unsqueeze(1),
+            "p1_p2_ratio": time_data["p1_p2_ratio"][start:end].unsqueeze(1),
+            "t": time_data["t"][start:end].unsqueeze(1)
         }
 
         return {"inputs": inputs, "target": target, "pde_inputs": pde_inputs}
@@ -252,7 +252,7 @@ class AtmosphereIterableDataset(IterableDataset):
         """Iterate over **shuffled** time steps and yield mini-batches."""
         time_indices = np.random.permutation(self.num_timesteps)  # Shuffle time step order
         for time_idx in time_indices:
-            debug_print()
+            #debug_print()
             time_data = self._load_time_step(time_idx)  # **Shuffled within time step**
             for batch_idx in range(self.batches_per_timestep):
                 yield self._create_batch(time_data, batch_idx)

@@ -3,6 +3,7 @@ import os
 import torch
 import pytorch_lightning as pl
 from pytorch_lightning import seed_everything
+from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
 from omegaconf import OmegaConf
 from datetime import datetime
@@ -75,23 +76,28 @@ if __name__ == "__main__":
     model = INRModel(config).to(set_device())
 
     # Callback setup
-    callback_cfg = config.trainer.callbacks.INRLoggerCallback
-    logger_callback = INRLoggerCallback(
-        monitor_metrics=callback_cfg.monitor_metrics,
+    model_name = config.get("run_name", "UnknownModel")
+    run_name_date = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+    callback_cfg = config.trainer.callbacks.ModelCheckpoint
+    checkpoint_callback = ModelCheckpoint(
+        monitor=callback_cfg.monitor,
         mode=callback_cfg.mode,
-        save_path=callback_cfg.save_path
+        dirpath=callback_cfg.dirpath,
+        save_top_k=callback_cfg.save_top_k,
+        save_last=callback_cfg.save_last,
+        filename= f"model_{model_name}_{run_name_date}"
     )
 
     # WandB configuration
     wandb_cfg = config.wandb
-    run_name_date = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    model_name = config.get("run_name", "UnknownModel")
 
     wandb_logger = WandbLogger(
         project=wandb_cfg.project,
         entity=wandb_cfg.entity,
-        name=f"INR_Training_{model_name}_{run_name_date}",
-        log_model=True
+        name=f"{model_name}_{run_name_date}",
+        log_model=True,
+        config=OmegaConf.to_container(config, resolve=True)
     )
 
     # Optimized Trainer configuration
@@ -101,8 +107,7 @@ if __name__ == "__main__":
         devices="auto",
         precision="16-mixed",  # Mixed precision training
         gradient_clip_val=config.trainer.get("gradient_clip", 0.5),  # Prevent exploding gradients
-        deterministic=False,  # Faster but maintains reproducibility
-        callbacks=[logger_callback],
+        deterministic=False,  # Deterministic training maintains reproducibility
         logger=wandb_logger,
         log_every_n_steps=10,
         enable_progress_bar=True,  # Disable if using in notebook
