@@ -12,7 +12,7 @@ class FinerModel(nn.Module):
             config (OmegaConf/YAML dict): Configuration file specifying model hyperparameters.
         """
         super().__init__()
-        debug_print()
+        #debug_print()
         self.config = config
         in_features = self.config.in_features
         out_features = self.config.out_features
@@ -34,7 +34,7 @@ class FinerModel(nn.Module):
         self.net = nn.Sequential(*layers)
 
     def forward(self, coords):
-        debug_print()
+        #debug_print()
         return self.net(coords)
 
 
@@ -52,7 +52,7 @@ class FinerLayer(nn.Module):
             is_last (bool): Whether this is the last layer (no activation applied).
         """
         super().__init__()
-        debug_print()
+        #debug_print()
         self.in_features = in_features
         self.omega_0 = omega_0
         self.activation = activation.lower()
@@ -64,7 +64,7 @@ class FinerLayer(nn.Module):
         self.init_weights()
 
     def forward(self, x):
-        debug_print()
+        #debug_print()
         x = self.linear(x)
         if self.is_last:
             return x
@@ -72,7 +72,7 @@ class FinerLayer(nn.Module):
 
     def init_weights(self):
         """Weight initialization following strict mathematical logic. https://github.com/liuzhen0212/FINERplusplus/blob/main/models.py"""
-        debug_print()
+        #debug_print()
         with torch.no_grad():
             if self.is_first:
                 self.linear.weight.uniform_(-1 / self.in_features, 1 / self.in_features)
@@ -82,16 +82,16 @@ class FinerLayer(nn.Module):
 
     def siren_activation(self, x):
         """Standard SIREN activation: sin(ωx)"""
-        debug_print()
+        #debug_print()
         return torch.sin(self.omega_0 * x)
 
     def finer_activation(self, x):
         """FINER activation: sin(ωαx), where α scales adaptively."""
-        debug_print()
+        #debug_print()
         return torch.sin(self.omega_0 * self.generate_alpha(x) * x)
 
     def generate_alpha(self, x):
         """Adaptive scaling factor α for FINER activation."""
-        debug_print()
+        #debug_print()
         with torch.no_grad():
             return torch.abs(x) + 1  # Simple scaling rule

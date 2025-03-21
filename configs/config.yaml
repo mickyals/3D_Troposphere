@@ -1,11 +1,16 @@
 seed: 3
-run_name: "test"
+run_name: "test_physics_losses"
 
 dataset:
+<<<<<<< HEAD
   nc_file: "/w/nobackup/385/scratch-space/expires-2025-Apr-01/3D_atmosphere_updated_z.nc"
   # nc_file: "C:/Users/micke/Downloads/3D_atmosphere_updated_z.nc"
   batch_size: 50000
   # points_per_batch: 50000 # dataset is define as 2
+=======
+  nc_file: "C:/Users/micke/Downloads/3D_atmosphere_preprocessed_again.nc"
+  batch_size: 50000
+>>>>>>> cafa78163982a32253d6b4b7a6b1d64d6770167d
   shuffle: False
   num_workers: 8
   prefetch_factor: 2
@@ -55,6 +60,7 @@ model:
   # output_dim: 1  # Temperature
   # loss: MSELoss
 
+<<<<<<< HEAD
   # _target_: "models.finer.FinerModel"
   # in_features: 4  # (x,y,z, geopotential_height)
   # out_features: 1 # temp
@@ -64,6 +70,17 @@ model:
   #   w0: 30.0       # Parameter for the sine activation, if used.
   #   w1: 30.0 # Hidden Omega
   #   activation: "finer" # finer-siren default, any other value will give basic siren - we can use this to make other finer models
+=======
+  _target_: "models.finer.FinerModel"
+  in_features: 4  # (x,y,z, geopotential_height)
+  out_features: 1 # temp
+  num_hidden_layers: 5
+  hidden_size: 256
+  init_params:
+    w0: 30.0       # Parameter for the sine activation, if used.
+    w1: 30.0 # Hidden Omega
+    activation: "siren" # finer-siren default "finer", any other value will give basic siren - we can use this to make other finer models
+>>>>>>> cafa78163982a32253d6b4b7a6b1d64d6770167d
     
   optimizer_config: #default is for adam
     type: "Adam"
@@ -83,24 +100,23 @@ model:
     type: "MSELoss"
     params:
       reduction: "mean"
-      
+
+    data_weight: 1.0
     physics_weight: 1.0              
     regularizer_weight: 0.1
     regularizer_norm: "L2" # L1 (mean abs) or L2   (mean^2)
 
 
 trainer:
-   max_epochs: 1000
+   max_epochs: 2
    #accumulate_grad_batches: 4
    callbacks:
-     INRLoggerCallback:
-       monitor_metrics:
-         - "train/data_loss"
-         #- "train/physics_loss"
-         #- "train/physics_regulariser"
-         #- "train/total_loss"
+     ModelCheckpoint:
+       monitor: "train/total_loss"
        mode: "min"
-       save_path: "checkpoints"
+       save_top_k: 3
+       save_last: True
+       dirpath: "checkpoints"
        
        
 wandb:
