@@ -7,16 +7,19 @@ from pointcloudhelpers import save_point_cloud_ply_latlon
 
 
 class PointCloudGenerator:
-    def __init__(self, config, device=None):
+    def __init__(self, model, config, device=None):
         debug_print()
         self.config = config
         self.device = set_device()
 
+        target_str = self.config.model.pop("_target_")
+        self.target_str = target_str
+
         # load model
-        self.model = self.load_model()
+        self.model = model.to(self.device)
 
         # sampling for point cloud
-        self.num_points = config.pointcloud.num_points
+        # self.num_points = config.pointcloud.num_points
         self.lat_range = config.pointcloud.lat_range  # (min, max)
         self.lon_range = config.pointcloud.lon_range  # (min, max)
         self.gh_range = config.pointcloud.geopotential_height_range  # (min, max)
@@ -25,25 +28,27 @@ class PointCloudGenerator:
         self.K_min, self.K_max = 183, 330  # Temperature bounds in Kelvin
         self.gh_min, self.gh_max = -428.6875, 48664.082  # based on the original range of the data
 
-    def load_model(self):
-        """ load model from config"""
-        debug_print()
-        model_cfg = self.config.model
-        checkpoint_path = self.config.model_checkpoint  # Path to the saved weights
+    # def load_model(self):
+    #     """ load model from config"""
+    #     debug_print()
+    #     model_cfg = self.config.model
+    #     checkpoint_path = self.config.model_checkpoint  # Path to the saved weights
 
-        module_path, class_name = model_cfg._target_.rsplit(".", 1)
-        module = importlib.import_module(module_path)
-        model_class = getattr(module, class_name)
+    #     target_str = model_cfg.pop("_target_")
+    #     self.target_str = target_str
+    #     module_path, class_name = target_str.rsplit(".", 1)
+    #     module = importlib.import_module(module_path)
+    #     model_class = getattr(module, class_name)
 
-        # instantiate model
-        model = model_class(model_cfg).to(self.device)
+    #     # instantiate model
+    #     model = model_class(model_cfg).to(self.device)
 
-        # load weights
-        model.load_state_dict(torch.load(checkpoint_path, map_location=self.device))
-        model.eval()  # Set to evaluation mode
-        print(f"Loaded model from {checkpoint_path}")
+    #     # load weights
+    #     model.load_state_dict(torch.load(checkpoint_path, map_location=self.device))
+    #     model.eval()  # Set to evaluation mode
+    #     print(f"Loaded model from {checkpoint_path}")
 
-        return model
+    #     return model
 
     def sample_points(self):
         debug_print()
@@ -80,6 +85,8 @@ class PointCloudGenerator:
 
     def generate(self):
         debug_print()
+        torch.cuda.empty_cache()
+        torch.cuda.set_per_process_memory_fraction(1.0, 0)
         # Sample points based on config.
         inputs_tensor, lat_samples, lon_samples, gh_samples = self.sample_points()
 
@@ -97,7 +104,7 @@ class PointCloudGenerator:
         }
 
         # Extract model class name from the _target_ string.
-        model_target = self.config.model._target_
+        model_target = self.target_str
         _, class_name = model_target.rsplit(".", 1)
         filename = f"{class_name}_point_cloud.ply"
         save_point_cloud_ply_latlon(point_cloud, filename=filename)
