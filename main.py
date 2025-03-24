@@ -85,6 +85,7 @@ if __name__ == "__main__":
     run_name_date = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
     callback_cfg = config.trainer.callbacks.ModelCheckpoint
+    os.makedirs(callback_cfg.dirpath, exist_ok=True)
     checkpoint_callback = ModelCheckpoint(
         monitor=callback_cfg.monitor,
         mode=callback_cfg.mode,

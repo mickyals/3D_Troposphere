@@ -8,3 +8,5 @@ __pycache__/
 checkpoints/
 wandb/
 debug_log_*.txt
+.ipynb_checkpoints
+checkpoints/

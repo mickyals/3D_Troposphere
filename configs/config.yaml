@@ -1,9 +1,9 @@
 seed: 3
-run_name: "test_physics_losses"
+run_name: "loss_scaling_0-8_0-2"
 
 dataset:
-  nc_file: "/w/nobackup/385/scratch-space/expires-2025-Apr-01/3D_atmosphere_preprocessed_again.nc"
-  batch_size: 50000
+  nc_file: "C:/Users/micke/Downloads/3D_atmosphere_preprocessed_again.nc"
+  batch_size: 1000000
   shuffle: False
   num_workers: 8
   prefetch_factor: 2
@@ -61,7 +61,7 @@ model:
   init_params:
     w0: 30.0       # Parameter for the sine activation, if used.
     w1: 30.0 # Hidden Omega
-    activation: "siren" # finer-siren default "finer", any other value will give basic siren - we can use this to make other finer models
+    activation: "finer" # finer-siren default "finer", any other value will give basic siren - we can use this to make other finer models
     
   optimizer_config: #default is for adam
     type: "Adam"
@@ -82,8 +82,8 @@ model:
     params:
       reduction: "mean"
 
-    data_weight: 1.0
-    physics_weight: 1.0              
+    data_weight: 0.8
+    physics_weight: 0.2
     regularizer_weight: 0.1
     regularizer_norm: "L2" # L1 (mean abs) or L2   (mean^2)
 

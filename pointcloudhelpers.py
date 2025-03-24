@@ -25,7 +25,7 @@ def save_point_cloud_ply_latlon(point_cloud, filename="point_cloud.ply"):
     cloud = pv.PolyData(points)
 
     # Attach temperature as a scalar attribute.
-    cloud.cell_data["temperature"] = temperature
+    cloud["temperature"] = temperature
 
     print(cloud)
 
