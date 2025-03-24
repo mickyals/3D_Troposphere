@@ -84,48 +84,48 @@ if __name__ == "__main__":
     model_name = config.get("run_name", "UnknownModel")
     run_name_date = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-    # callback_cfg = config.trainer.callbacks.ModelCheckpoint
-    # checkpoint_callback = ModelCheckpoint(
-    #     monitor=callback_cfg.monitor,
-    #     mode=callback_cfg.mode,
-    #     dirpath=callback_cfg.dirpath,
-    #     save_top_k=callback_cfg.save_top_k,
-    #     save_last=callback_cfg.save_last,
-    #     filename= f"model_{model_name}_{run_name_date}"
-    # )
+    callback_cfg = config.trainer.callbacks.ModelCheckpoint
+    checkpoint_callback = ModelCheckpoint(
+        monitor=callback_cfg.monitor,
+        mode=callback_cfg.mode,
+        dirpath=callback_cfg.dirpath,
+        save_top_k=callback_cfg.save_top_k,
+        save_last=callback_cfg.save_last,
+        filename= f"model_{model_name}_{run_name_date}"
+    )
 
-    # # WandB configuration
-    # wandb_cfg = config.wandb
+    # WandB configuration
+    wandb_cfg = config.wandb
 
-    # wandb_logger = WandbLogger(
-    #     project=wandb_cfg.project,
-    #     entity=wandb_cfg.entity,
-    #     name=f"{model_name}_{run_name_date}",
-    #     log_model=True,
-    #     config=OmegaConf.to_container(config, resolve=True)
-    # )
+    wandb_logger = WandbLogger(
+        project=wandb_cfg.project,
+        entity=wandb_cfg.entity,
+        name=f"{model_name}_{run_name_date}",
+        log_model=True,
+        config=OmegaConf.to_container(config, resolve=True)
+    )
 
-    # # Optimized Trainer configuration
-    # trainer = pl.Trainer(
-    #     max_epochs=config.trainer.max_epochs,
-    #     accelerator="auto",  # Automatically uses GPU if available
-    #     devices="auto",
-    #     precision="16-mixed",  # Mixed precision training
-    #     gradient_clip_val=config.trainer.get("gradient_clip", 0.5),  # Prevent exploding gradients
-    #     deterministic=False,  # Deterministic training maintains reproducibility
-    #     logger=wandb_logger,
-    #     log_every_n_steps=10,
-    #     enable_progress_bar=True,  # Disable if using in notebook
-    #     enable_checkpointing=True,
-    #     use_distributed_sampler=False,  # For IterableDataset
-    # )
+    # Optimized Trainer configuration
+    trainer = pl.Trainer(
+        max_epochs=config.trainer.max_epochs,
+        accelerator="auto",  # Automatically uses GPU if available
+        devices="auto",
+        precision="16-mixed",  # Mixed precision training
+        gradient_clip_val=config.trainer.get("gradient_clip", 0.5),  # Prevent exploding gradients
+        deterministic=False,  # Deterministic training maintains reproducibility
+        logger=wandb_logger,
+        log_every_n_steps=10,
+        enable_progress_bar=True,  # Disable if using in notebook
+        enable_checkpointing=True,
+        use_distributed_sampler=False,  # For IterableDataset
+    )
 
-    # # Training with optimized data loader
-    # try:
-    #     trainer.fit(model, datamodule=data_module)
-    # finally:
-    #     torch.save(model.state_dict(), os.path.join(callback_cfg.dirpath, 'model.pt'))
-    #     wandb.finish()  # Ensure clean exit
+    # Training with optimized data loader
+    try:
+        trainer.fit(model, datamodule=data_module)
+    finally:
+        torch.save(model.state_dict(), os.path.join(callback_cfg.dirpath, 'model.pt'))
+        wandb.finish()  # Ensure clean exit
 
     # ---------------- Step 5: Generate Point Cloud (Optional) ----------------
     if args.generate_pc:
