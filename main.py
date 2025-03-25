@@ -125,7 +125,7 @@ if __name__ == "__main__":
     try:
         trainer.fit(model, datamodule=data_module)
     finally:
-        torch.save(model.state_dict(), os.path.join(callback_cfg.dirpath, 'model.pt'))
+        torch.save(model.state_dict(), os.path.join(callback_cfg.dirpath, f'model_{model_name}_{run_name_date}.pt'))
         wandb.finish()  # Ensure clean exit
 
     # ---------------- Step 5: Generate Point Cloud (Optional) ----------------

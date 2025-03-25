@@ -257,6 +257,6 @@ class AtmosphereIterableDataset(IterableDataset):
             for batch_idx in range(self.batches_per_timestep):
                 yield self._create_batch(time_data, batch_idx)
             torch.cuda.empty_cache() if torch.cuda.is_available() else None
-
-    def __len__(self):
-        return self.num_timesteps * self.batches_per_timestep
+    #
+    # def __len__(self):
+    #     return self.num_timesteps * self.batches_per_timestep

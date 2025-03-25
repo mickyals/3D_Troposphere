@@ -1,9 +1,9 @@
 seed: 3
-run_name: "loss_scaling_0-8_0-2"
+run_name: "2_mill_lr-6.45e-5_adam"
 
 dataset:
   nc_file: "C:/Users/micke/Downloads/3D_atmosphere_preprocessed_again.nc"
-  batch_size: 1000000
+  batch_size: 2000000
   shuffle: False
   num_workers: 8
   prefetch_factor: 2
@@ -65,7 +65,7 @@ model:
     
   optimizer_config: #default is for adam
     type: "Adam"
-    learning_rate: 0.0001 #default for adam
+    learning_rate: 6.45e-5 #default for adam is 1e-4
     params:
       betas: [0.9, 0.999]
       eps: 1e-8  #this Parameter will cause the biggest changes to training ease and stability
