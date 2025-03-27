@@ -14,6 +14,8 @@ from point_cloud_generator.pointcloudgenerator import PointCloudGenerator  # Ens
 from models import *
 import wandb
 
+RENDER_TYPES = ['lon', 'lat', 'all']
+
 if torch.cuda.is_available():
     torch.cuda.empty_cache()
     print(torch.cuda.memory_summary())
@@ -23,6 +25,7 @@ def get_parser():
     """Set up argument parsing for main.py"""
     parser = argparse.ArgumentParser(description="Train INR Model for Atmospheric Data")
     parser.add_argument("--config", type=str, required=True, help="Path to the YAML config file")
+    parser.add_argument("--render_type", type=str, required=True, help="lat, lon, or all")
     parser.add_argument("--generate_pc", action="store_true", help="Generate point cloud after training")
     return parser.parse_args()
 
@@ -69,66 +72,74 @@ if __name__ == "__main__":
     # Load YAML config
     config = load_config(args.config)
 
-    # Set random seed for reproducibility
+    # # Set random seed for reproducibility
     seed_everything(config.seed, workers=True)
     print("Config Loaded Successfully")
 
-    # Instantiate DataModule with optimized settings
+    # # Instantiate DataModule with optimized settings
     data_module = AtmosphereDataModule(config)
 
-    # Instantiate Model
+    # # Instantiate Model
+    target_str = config.model._target_
     model = INRModel(config).to(set_device())
 
-    # Callback setup
+    # # Callback setup
     model_name = config.get("run_name", "UnknownModel")
     run_name_date = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-    callback_cfg = config.trainer.callbacks.ModelCheckpoint
-    checkpoint_callback = ModelCheckpoint(
-        monitor=callback_cfg.monitor,
-        mode=callback_cfg.mode,
-        dirpath=callback_cfg.dirpath,
-        save_top_k=callback_cfg.save_top_k,
-        save_last=callback_cfg.save_last,
-        filename= f"model_{model_name}_{run_name_date}"
-    )
+    if not args.generate_pc:
+        callback_cfg = config.trainer.callbacks.ModelCheckpoint
+        os.makedirs(callback_cfg.dirpath, exist_ok=True)
+        checkpoint_callback = ModelCheckpoint(
+            monitor=callback_cfg.monitor,
+            mode=callback_cfg.mode,
+            dirpath=callback_cfg.dirpath,
+            save_top_k=callback_cfg.save_top_k,
+            save_last=callback_cfg.save_last,
+            filename= f"model_{model_name}_{run_name_date}"
+        )
 
-    # WandB configuration
-    wandb_cfg = config.wandb
+        # WandB configuration
+        wandb_cfg = config.wandb
 
-    wandb_logger = WandbLogger(
-        project=wandb_cfg.project,
-        entity=wandb_cfg.entity,
-        name=f"{model_name}_{run_name_date}",
-        log_model=True,
-        config=OmegaConf.to_container(config, resolve=True)
-    )
+        wandb_logger = WandbLogger(
+            project=wandb_cfg.project,
+            entity=wandb_cfg.entity,
+            name=f"{model_name}_{run_name_date}",
+            log_model=True,
+            config=OmegaConf.to_container(config, resolve=True)
+        )
 
-    # Optimized Trainer configuration
-    trainer = pl.Trainer(
-        max_epochs=config.trainer.max_epochs,
-        accelerator="auto",  # Automatically uses GPU if available
-        devices="auto",
-        precision="16-mixed",  # Mixed precision training
-        gradient_clip_val=config.trainer.get("gradient_clip", 0.5),  # Prevent exploding gradients
-        deterministic=False,  # Deterministic training maintains reproducibility
-        logger=wandb_logger,
-        log_every_n_steps=10,
-        enable_progress_bar=True,  # Disable if using in notebook
-        enable_checkpointing=True,
-        use_distributed_sampler=False,  # For IterableDataset
-    )
+        # Optimized Trainer configuration
+        trainer = pl.Trainer(
+            max_epochs=config.trainer.max_epochs,
+            accelerator="auto",  # Automatically uses GPU if available
+            devices="auto",
+            precision="16-mixed",  # Mixed precision training
+            gradient_clip_val=config.trainer.get("gradient_clip", 0.5),  # Prevent exploding gradients
+            deterministic=False,  # Deterministic training maintains reproducibility
+            logger=wandb_logger,
+            log_every_n_steps=10,
+            enable_progress_bar=True,  # Disable if using in notebook
+            enable_checkpointing=True,
+            use_distributed_sampler=False,  # For IterableDataset
+        )
 
-    # Training with optimized data loader
-    try:
-        trainer.fit(model, datamodule=data_module)
-    finally:
-        wandb.finish()  # Ensure clean exit
+        # Training with optimized data loader
+        try:
+            trainer.fit(model, datamodule=data_module)
+        finally:
+            torch.save(model.state_dict(), os.path.join(callback_cfg.dirpath, 'model.pt'))
+            wandb.finish()  # Ensure clean exit
 
     # ---------------- Step 5: Generate Point Cloud (Optional) ----------------
     if args.generate_pc:
         debug_print()
         print("Generating point cloud from trained model...")
+
+        render_type = args.render_type.lower()
+        if render_type not in RENDER_TYPES:
+            raise Exception(f"Invalid render type: must be {RENDER_TYPES}, got {render_type}")
 
         # Load trained model from checkpoint
         checkpoint_path = config.model_checkpoint  # Ensure this is defined in config
@@ -136,7 +147,8 @@ if __name__ == "__main__":
         model.eval()
 
         # Initialize PointCloudGenerator
-        pc_generator = PointCloudGenerator(config, device="cpu")
-        pointcloud_filename = pc_generator.generate()
+        config.model._target_ = target_str
+        pc_generator = PointCloudGenerator(model, config, device="cpu")
+        pointcloud_filename = pc_generator.generate(render_type=render_type)
 
         print(f"Point cloud saved to {pointcloud_filename}")
