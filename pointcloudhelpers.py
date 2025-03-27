@@ -72,4 +72,4 @@ def render_point_cloud(points, temperature, render_type='all'):
     plt.colorbar(im, ax=axes, orientation="horizontal", label=f"t Kelvin", aspect=80)
     fig.suptitle(f'World tempurature prediction {text} {np.round(np.min(axis_z_sampled), 2)} to {text} {np.round(np.max(axis_z_sampled), 2)}', size=30)
     plt.savefig(f'images/World_{text}.png')
-    print(f'Plot Saved: images/Worl
+    print(f'Plot Saved: images/World_{text}.png')
