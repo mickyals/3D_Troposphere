@@ -2,6 +2,7 @@ import torch
 from torch.utils.data import IterableDataset
 import xarray as xr
 import numpy as np
+import gc
 from helpers import debug_print, set_device
 
 class AtmosphereDataset(IterableDataset):
@@ -157,12 +158,24 @@ class AtmosphereIterableDataset(IterableDataset):
             self.num_lat = len(ds.latitude)
             self.num_lon = len(ds.longitude)
 
+
+        # Precompute static spatial grid and pressure array
+        self._precompute_static_data()
+
+        self.ds = xr.open_dataset(
+            self.nc_file,
+            engine="netcdf4",
+            decode_times=False,
+            chunks={"valid_time": 1},
+            drop_variables=["z"],
+            lock=False
+        )
+
         # Total points per time step
         self.points_per_timestep = self.num_pressure * self.num_lat * self.num_lon
         self.batches_per_timestep = int(np.ceil(self.points_per_timestep / self.batch_size))
 
-        # Precompute static spatial grid and pressure array
-        self._precompute_static_data()
+
 
     def _precompute_static_data(self):
         """Precompute static spatial grid and pressure levels."""
@@ -194,11 +207,11 @@ class AtmosphereIterableDataset(IterableDataset):
         }
 
     def _load_time_step(self, time_idx):
-        """Load and normalize all variables for a single timestep."""
-        with xr.open_dataset(self.nc_file, engine="netcdf4", decode_times=False, drop_variables=["z"]) as ds:
-            ts = ds.isel(valid_time=time_idx).load()
+         try:
+            # Load chunked data into memory
+            ts = self.ds.isel(valid_time=time_idx).compute()
 
-            #z = ts.z.values.astype(np.float32).ravel()
+            # Process variables
             q = ts.q.values.astype(np.float32).ravel()
             t = ts.t.values.astype(np.float32).ravel()
             t_norm = ts.t_norm.values.astype(np.float32).ravel()
@@ -207,22 +220,22 @@ class AtmosphereIterableDataset(IterableDataset):
             mean_T_v = ts.mean_T_v.values.astype(np.float32).ravel()
             delta_z = ts.delta_z.values.astype(np.float32).ravel()
 
+            indices = np.random.permutation(len(t))
 
-        # **Shuffle all points within the time step**
-        indices = np.random.permutation(len(t))
-
-        return {
-            "q": torch.from_numpy(q)[indices],
-            "t": torch.from_numpy(t)[indices],
-            "t_norm": torch.from_numpy(t_norm)[indices],
-            "gh_norm": torch.from_numpy(gh_norm)[indices],
-            "p1_p2_ratio": torch.from_numpy(p1_p2_ratio)[indices],
-            "mean_T_v": torch.from_numpy(mean_T_v)[indices],
-            "delta_z": torch.from_numpy(delta_z)[indices],
-            "x": torch.from_numpy(self.static_grid["x"])[indices],
-            "y": torch.from_numpy(self.static_grid["y"])[indices],
-            "z": torch.from_numpy(self.static_grid["z"])[indices],
-        }
+            return {
+                "q": torch.from_numpy(q)[indices],
+                "t": torch.from_numpy(t)[indices],
+                "t_norm": torch.from_numpy(t_norm)[indices],
+                "gh_norm": torch.from_numpy(gh_norm)[indices],
+                "p1_p2_ratio": torch.from_numpy(p1_p2_ratio)[indices],
+                "mean_T_v": torch.from_numpy(mean_T_v)[indices],
+                "delta_z": torch.from_numpy(delta_z)[indices],
+                "x": torch.from_numpy(self.static_grid["x"])[indices],
+                "y": torch.from_numpy(self.static_grid["y"])[indices],
+                "z": torch.from_numpy(self.static_grid["z"])[indices]}
+         finally:
+            del ts
+            gc.collect()
 
     def _create_batch(self, time_data, batch_idx):
         """Create a mini-batch from the shuffled time step."""
@@ -252,11 +265,20 @@ class AtmosphereIterableDataset(IterableDataset):
         """Iterate over **shuffled** time steps and yield mini-batches."""
         time_indices = np.random.permutation(self.num_timesteps)  # Shuffle time step order
         for time_idx in time_indices:
-            #debug_print()
-            time_data = self._load_time_step(time_idx)  # **Shuffled within time step**
-            for batch_idx in range(self.batches_per_timestep):
-                yield self._create_batch(time_data, batch_idx)
-            torch.cuda.empty_cache() if torch.cuda.is_available() else None
-    #
-    # def __len__(self):
-    #     return self.num_timesteps * self.batches_per_timestep
+            time_data = self._load_time_step(time_idx)
+
+            try:
+                for batch_idx in range(self.batches_per_timestep):
+                    yield self._create_batch(time_data, batch_idx)
+            finally:
+                # Clean up after processing all batches
+                del time_data
+                gc.collect()
+
+    def __len__(self):
+        return self.num_timesteps * self.batches_per_timestep
+
+    def __del__(self):
+        """Ensure proper cleanup"""
+        if hasattr(self, 'ds'):
+            self.ds.close()

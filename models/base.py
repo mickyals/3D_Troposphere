@@ -40,7 +40,7 @@ class INRModel(pl.LightningModule):
 
         # these can be commented out if not need for your task
         self.GRAVITY = 9.80665 # gravitational acceleration
-        self.Rd = 287 # dry air constant
+        self.Rd = 287.0 # dry air constant
 
 
     def forward(self, x):
