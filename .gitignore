@@ -10,3 +10,4 @@ wandb/
 debug_log_*.txt
 .ipynb_checkpoints
 checkpoints/
+*.ply

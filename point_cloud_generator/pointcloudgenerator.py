@@ -83,10 +83,11 @@ class PointCloudGenerator:
 
         return inputs_tensor, lat_grid.flatten(), lon_grid.flatten(), gh_grid.flatten()
 
-    def generate(self):
+    def generate(self, render_type='all'):
         debug_print()
-        torch.cuda.empty_cache()
-        torch.cuda.set_per_process_memory_fraction(1.0, 0)
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.set_per_process_memory_fraction(1.0, 0)
         # Sample points based on config.
         inputs_tensor, lat_samples, lon_samples, gh_samples = self.sample_points()
 
@@ -107,6 +108,6 @@ class PointCloudGenerator:
         model_target = self.target_str
         _, class_name = model_target.rsplit(".", 1)
         filename = f"{class_name}_point_cloud.ply"
-        save_point_cloud_ply_latlon(point_cloud, filename=filename)
+        save_point_cloud_ply_latlon(point_cloud, filename=filename, render_type=render_type)
 
         return filename

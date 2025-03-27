@@ -1,5 +1,6 @@
-seed: 42
+seed: 3
 run_name: "finer_12480-iter"
+
 dataset:
   nc_file: "C:/Users/micke/Downloads/3D_atmosphere_preprocessed_again.nc"
   batch_size: 750000
@@ -55,7 +56,7 @@ model:
   _target_: "models.finer.FinerModel"
   in_features: 4  # (x,y,z, geopotential_height)
   out_features: 1 # temp
-  num_hidden_layers: 6
+  num_hidden_layers: 5
   hidden_size: 256
   init_params:
     w0: 30.0       # Parameter for the sine activation, if used.
@@ -64,7 +65,7 @@ model:
     
   optimizer_config: #default is for adam
     type: "Adam"
-    learning_rate: 1.0e-4 #default for adam is 1e-4
+    learning_rate: 6.45e-5 #default for adam is 1e-4
     params:
       betas: [0.9, 0.999]
       eps: 1e-8  #this Parameter will cause the biggest changes to training ease and stability
@@ -81,8 +82,8 @@ model:
     params:
       reduction: "mean"
 
-    data_weight: 1.0 #followed Mohammad Amin Nabian, Hadi Meidani 2021
-    physics_weight: 0.2 #20% loss physics contribute
+    data_weight: 0.8
+    physics_weight: 0.2
     regularizer_weight: 0.1
     regularizer_norm: "L2" # L1 (mean abs) or L2   (mean^2)
 

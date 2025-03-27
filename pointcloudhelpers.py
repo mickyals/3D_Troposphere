@@ -7,7 +7,7 @@ import cartopy.feature as cfeature
 
 
 
-def save_point_cloud_ply_latlon(point_cloud, filename="point_cloud.ply"):
+def save_point_cloud_ply_latlon(point_cloud, filename="point_cloud.ply", render_type='all'):
 
     # Convert dictionary arrays to numpy arrays.
     lat = np.array(point_cloud["lat"])
@@ -19,7 +19,7 @@ def save_point_cloud_ply_latlon(point_cloud, filename="point_cloud.ply"):
     # x coordinate = longitude, y coordinate = latitude, z coordinate = geopotential height.
     points = np.column_stack([lon, lat, gh])
 
-    render_point_cloud(points, temperature)
+    render_point_cloud(points, temperature, render_type=render_type)
 
     # Create a PyVista PolyData object from the points.
     cloud = pv.PolyData(points)
@@ -33,31 +33,43 @@ def save_point_cloud_ply_latlon(point_cloud, filename="point_cloud.ply"):
     cloud.save(filename)
     print(f"Point cloud saved to {filename}")
 
-def render_point_cloud(points, temperature):
-    # # Plot using Matplotlib
-    # fig = plt.figure(figsize=(8, 8))
-    # ax = fig.add_subplot(111, projection='3d')
-    # scatter = ax.scatter(points[:, 0], points[:, 1], points[:, 2], c=temperature, cmap='inferno', s=1)
-    # fig.colorbar(scatter, label="Temperature")
-    # ax.set_xlabel("Longitude")
-    # ax.set_ylabel("Latitude")
-    # ax.set_zlabel("Geopotential Height")
-    # ax.set_title("3D Point Cloud with Temperature Colormap")
-    # print("done")
-    # plt.savefig('test.png')
+def render_point_cloud(points, temperature, render_type='all'):
+    axis_x, axis_y, axis_z = points[:, 0], points[:, 1], points[:, 2]
 
-    fig, axes = plt.subplots(5, 10, figsize=(18, 12), subplot_kw={"projection": ccrs.PlateCarree()})
+    d = {
+        'lon': [points[:, 1], points[:, 2], points[:, 0]],
+        'lat': [points[:, 0], points[:, 2], points[:, 1]],
+        'all': [points[:, 0], points[:, 1], points[:, 2]]
+    }
+
+    text = render_type
+    if render_type == 'all':
+        text = 'GPH'
+    axis_x, axis_y, axis_z = d[render_type]
+
+    axis_z_sampled = np.sort(np.unique_values(axis_z))
+    axis_z_sampled = axis_z_sampled[::int(np.floor(len(axis_z_sampled)/10))]
+
+    plot_per_row = 5
+    if render_type == 'all':
+        fig, axes = plt.subplots(int(np.ceil(len(axis_z_sampled)/plot_per_row)), plot_per_row, figsize=(18, 12), subplot_kw={"projection": ccrs.PlateCarree()})
+    else:
+        fig, axes = plt.subplots(int(np.ceil(len(axis_z_sampled)/plot_per_row)), plot_per_row, figsize=(18, 12))
     axes = axes.flatten()
-    gh = np.linspace(0, 20000, 50)
-    for i, level in enumerate(gh):
+    for i, level in enumerate(axis_z_sampled):
         ax = axes[i]
-        index = np.where(points[:, 2] == level)[0]
-        im = ax.scatter(points[index, 0], points[index, 1], c=temperature[index], transform=ccrs.PlateCarree(), cmap="inferno")
-        ax.coastlines()
-        ax.set_title(f"{np.round(level, 2)} hPa", fontsize=5)
+        index = np.where(axis_z == level)[0]
+        if render_type == 'all':
+            im = ax.scatter(axis_x[index], axis_y[index], c=temperature[index], s=0.5, transform=ccrs.PlateCarree(), cmap="inferno")
+            ax.coastlines()
+        else:
+            im = ax.scatter(axis_x[index], axis_y[index], c=temperature[index], s=0.5, cmap="inferno")
+        ax.set_title(f"{text} {np.round(level, 2)}", fontsize=15)
         ax.set_xticks([])
         ax.set_yticks([])
-    fig.tight_layout()
-    plt.colorbar(im, ax=axes, orientation="horizontal", label=f"t Kelvin")
-    plt.title('Toronto 0 to 20000')
-    plt.savefig('Toronto.png')
+    # fig.tight_layout()
+    fig.subplots_adjust(top=0.9, bottom=0.02, left=0.03, right=0.97)
+    plt.colorbar(im, ax=axes, orientation="horizontal", label=f"t Kelvin", aspect=80)
+    fig.suptitle(f'World tempurature prediction {text} {np.round(np.min(axis_z_sampled), 2)} to {text} {np.round(np.max(axis_z_sampled), 2)}', size=30)
+    plt.savefig(f'images/World_{text}.png')
+    print(f'Plot Saved: images/World_{text}.png')
