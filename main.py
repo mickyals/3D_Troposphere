@@ -25,7 +25,7 @@ def get_parser():
     """Set up argument parsing for main.py"""
     parser = argparse.ArgumentParser(description="Train INR Model for Atmospheric Data")
     parser.add_argument("--config", type=str, required=True, help="Path to the YAML config file")
-    parser.add_argument("--render_type", type=str, required=True, help="lat, lon, or all")
+    parser.add_argument("--render_type", type=str, help="lat, lon, or all")
     parser.add_argument("--generate_pc", action="store_true", help="Generate point cloud after training")
     return parser.parse_args()
 
@@ -129,7 +129,7 @@ if __name__ == "__main__":
         try:
             trainer.fit(model, datamodule=data_module)
         finally:
-            torch.save(model.state_dict(), os.path.join(callback_cfg.dirpath, 'model.pt'))
+            torch.save(model.state_dict(), os.path.join(callback_cfg.dirpath, f'{model_name}_{run_name_date}_model.pt'))
             wandb.finish()  # Ensure clean exit
 
     # ---------------- Step 5: Generate Point Cloud (Optional) ----------------

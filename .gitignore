@@ -5,9 +5,9 @@ venv/
 __pycache__/
 */__pycache__/
 3D_Atmosphere/
-checkpoints/
+#checkpoints/
 wandb/
 debug_log_*.txt
 .ipynb_checkpoints
-checkpoints/
+#checkpoints/
 *.ply
