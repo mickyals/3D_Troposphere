@@ -1,3 +1,3 @@
-from .atmosphere_dataset import AtmosphereDataset,  AtmosphereIterableDataset
+from .atmosphere_dataset import AtmosphereDataset, AtmosphereIterableDataset
 
 __all__ = ["AtmosphereDataset", "AtmosphereIterableDataset"]

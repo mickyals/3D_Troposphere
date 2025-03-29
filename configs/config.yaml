@@ -1,14 +1,14 @@
-seed: 3
-run_name: "test"
+seed: 42
+run_name: "MLP-ReLU_12480-iter"
 
 dataset:
-  # nc_file: "C:/Users/micke/Downloads/3D_atmosphere_updated_z.nc"
-  nc_file: "/Users/poyuchen/Downloads/3D_atmosphere_updated_z.nc"
-  batch_size: 1 # Kept as 1 since points_per_batch controls actual batch size when using iterabledataset
-  points_per_batch: 500000 # dataset is define as 2
+  nc_file: "C:/Users/micke/Downloads/3D_atmosphere_preprocessed_again.nc"
+  # nc_file: "/Users/poyuchen/Downloads/3D_atmosphere_updated_z.nc"
+  batch_size: 50000
   shuffle: False
-  num_workers: 0
-  prefetch_factor: null
+  num_workers: 8
+  prefetch_factor: 3
+
   variables:
     inputs: 
       geopotential_height: "z"
@@ -22,51 +22,55 @@ dataset:
 
 model:
   ### SIREN
-  # _target_: "models.Siren_simple.Siren"
-  # in_features: 3  # (lat, lon, geopotential_height)
-  # out_features: 1 # temp
-  # outermost_linear: False
-  # hidden_size_top: 256
-  # hidden_layers: [256, 256, 256, 256]
-  # activation: "sine"
-  # init_params:
-  #   w0: 30.0       # Parameter for the sine activation, if used.     
-  #   w1: 30.0       # Hidden Omega
+#  _target_: "models.Siren_simple.Siren"
+#  in_features: 4  # (lat, lon, geopotential_height)
+#  out_features: 1 # temp
+#  outermost_linear: False
+#  num_hidden_layers: 10
+#  hidden_size: 256
+#  init_params:
+#    w0: 30.0       # Parameter for the sine activation, if used.
+#    w1: 30.0       # Hidden Omega
+#    activation: "sine"
 
   ### SIREN_KAN
-  # _target_: "models.Siren_kan.Siren_KAN"
-  # in_features: 3  # (lat, lon, geopotential_height)
-  # out_features: 1 # temp
-  # outermost_linear: False
-  # hidden_size_top: 256
-  # hidden_layers: [256, 256, 256, 256]
-  # activation: "sine"
-  # init_params:
-  #   w0: 30.0       # Parameter for the sine activation, if used.     
-  #   w1: 30.0       # Hidden Omega
+#  _target_: "models.Siren_kan.Siren_KAN"
+#  in_features: 4  # (lat, lon, geopotential_height)
+#  out_features: 1 # temp
+#  outermost_linear: False
+#  hidden_size: 64
+#  num_hidden_layers: 5
+#  init_params:
+#    w0: 30.0       # Parameter for the sine activation, if used.
+#    w1: 30.0       # Hidden Omega
+#    activation: "sine"
 
-  ### MLP
-  # _target_: "models.MLP.MLPModel"
-  # name: MLP_ReLU
-  # input_dim: 3  # (lat, lon, geopotential_height)
-  # hidden_layers: [256, 256, 256, 256]  # 4-layer MLP with 256 neurons each
-  # activation: ReLU
-  # output_dim: 1  # Temperature
-  # loss: MSELoss
+### MLP
+  _target_: "models.MLP.MLPModel"
+  name: MLP_ReLU
+  input_dim: 4  # (lat, lon, geopotential_height)
+  hidden_layers: [256, 256, 256, 256, 256, 256, 256, 256, 256, 256]  # 10-layer MLP with 256 neurons each
+  activation: ReLU
+  output_dim: 1  # Temperature
+  loss: MSELoss
 
-  _target_: "models.finer.FinerModel"
-  in_features: 4  # (x,y,z, geopotential_height)
-  out_features: 1 # temp
-  num_hidden_layers: 5
-  hidden_size: 256
-  init_params:
-    w0: 30.0       # Parameter for the sine activation, if used.
-    w1: 30.0 # Hidden Omega
-    activation: "finer" # finer-siren default, any other value will give basic siren - we can use this to make other finer models
+#  _target_: "models.finer.FinerModel"
+#  in_features: 4  # (x,y,z, geopotential_height)
+#  out_features: 1 # temp
+#  num_hidden_layers: 10
+#  hidden_size: 256
+#  init_params:
+#    w0: 30.0       # Parameter for the sine activation, if used.
+#    w1: 30.0 # Hidden Omega
+#    init_method: "sine"
+#    init_gain: 5.0    # Weight scaling factor
+#    fbs: 0.25    # First bias scale (bias initialization range)
+#    alphatype: None
+#    alphareqgrad: False
     
   optimizer_config: #default is for adam
     type: "Adam"
-    learning_rate: 0.001 #default for adam
+    learning_rate: 1.0e-5 #default for adam is 1e-4
     params:
       betas: [0.9, 0.999]
       eps: 1e-8  #this Parameter will cause the biggest changes to training ease and stability
@@ -74,7 +78,7 @@ model:
   scheduler:
     type: "CosineAnnealingLR"
     params:
-      T_max: 10 #number of iterations per cycle
+      T_max: 1 #number of iterations per cycle
       eta_min: 1e-8 #min learning rate
       #interval: "epoch" # update per epoch
     
@@ -82,23 +86,23 @@ model:
     type: "MSELoss"
     params:
       reduction: "mean"
-      
-    physics_weight: 1.0              
+
+    data_weight: 0.8
+    physics_weight: 0.2
     regularizer_weight: 0.1
     regularizer_norm: "L2" # L1 (mean abs) or L2   (mean^2)
 
 
 trainer:
-   max_epochs: 1
+   max_epochs: 5
+   #accumulate_grad_batches: 4
    callbacks:
-     INRLoggerCallback:
-       monitor_metrics:
-         - "train/data_loss"
-         #- "train/physics_loss"
-         #- "train/physics_regulariser"
-         #- "train/total_loss"
+     ModelCheckpoint:
+       monitor: "train/total_loss"
        mode: "min"
-       save_path: "checkpoints"
+       save_top_k: 3
+       save_last: True
+       dirpath: "checkpoints"
        
        
 wandb:
@@ -109,14 +113,15 @@ wandb:
 
 
 pointcloud:
+  # num_points: 921957120
   resolution:
-    num_lats: 720
-    num_lons: 1440
-    num_geopotential_heights: 1000
-  lat_range: [-90,90]
-  lon_range: [-180,180]
-  geopotential_height_range: [-428.6875, 48664.082] # default is range of entire dataset in training -428.6875, 48664.082
+    num_lats: 180
+    num_lons: 360
+    num_geopotential_heights: 50
+  lat_range: [40, 45]
+  lon_range: [275, 285]
+  geopotential_height_range: [0, 20000] # default is range of entire dataset in training -428.6875, 48664.082
   
 
-model_checkpoint: "./checkpoints/this_model.pth" #example  
+model_checkpoint: "./checkpoints/model.pt" #example  
   
