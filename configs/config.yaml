@@ -1,10 +1,9 @@
 seed: 42
-run_name: "MLP-ReLU_12480-iter"
+run_name: "KAN_12480-iter"
 
 dataset:
-  # nc_file: "C:/Users/micke/Downloads/3D_atmosphere_preprocessed_again.nc"
-  nc_file: "/Users/poyuchen/Downloads/3D_atmosphere_updated_z.nc"
-  batch_size: 50000
+  nc_file: "C:/Users/micke/Downloads/3D_atmosphere_preprocessed_again.nc"
+  batch_size: 5000
   shuffle: False
   num_workers: 8
   prefetch_factor: 3
@@ -34,39 +33,39 @@ model:
   #   activation: "sine"
 
   ### SIREN_KAN
-#  _target_: "models.Siren_kan.Siren_KAN"
-#  in_features: 4  # (lat, lon, geopotential_height)
-#  out_features: 1 # temp
-#  outermost_linear: False
-#  hidden_size: 64
-#  num_hidden_layers: 5
-#  init_params:
-#    w0: 30.0       # Parameter for the sine activation, if used.
-#    w1: 30.0       # Hidden Omega
-#    activation: "sine"
+  _target_: "models.Siren_kan.Siren_KAN"
+  in_features: 4  # (lat, lon, geopotential_height)
+  out_features: 1 # temp
+  outermost_linear: False
+  hidden_size: 64
+  num_hidden_layers: 3
+  init_params:
+    w0: 30.0       # Parameter for the sine activation, if used.
+    w1: 30.0       # Hidden Omega
+    activation: "sine"
 
-### MLP
+  # ## MLP
   # _target_: "models.MLP.MLPModel"
   # name: MLP_ReLU
   # input_dim: 4  # (lat, lon, geopotential_height)
   # hidden_layers: [256, 256, 256, 256, 256, 256, 256, 256, 256, 256]  # 10-layer MLP with 256 neurons each
-  # activation: ReLU
+  # activation: silu
   # output_dim: 1  # Temperature
   # loss: MSELoss
 
-  _target_: "models.finer.FinerModel"
-  in_features: 4  # (x,y,z, geopotential_height)
-  out_features: 1 # temp
-  num_hidden_layers: 10
-  hidden_size: 256
-  init_params:
-    w0: 30.0       # Parameter for the sine activation, if used.
-    w1: 30.0 # Hidden Omega
-    init_method: "sine"
-    init_gain: 5.0    # Weight scaling factor
-    fbs: 0.25    # First bias scale (bias initialization range)
-    alphatype: None
-    alphareqgrad: False
+  # _target_: "models.finer.FinerModel"
+  # in_features: 4  # (x,y,z, geopotential_height)
+  # out_features: 1 # temp
+  # num_hidden_layers: 10
+  # hidden_size: 256
+  # init_params:
+  #   w0: 30.0       # Parameter for the sine activation, if used.
+  #   w1: 30.0 # Hidden Omega
+  #   init_method: "sine"
+  #   init_gain: 5.0    # Weight scaling factor
+  #   fbs: 0.25    # First bias scale (bias initialization range)
+  #   alphatype: None
+  #   alphareqgrad: False
     
   optimizer_config: #default is for adam
     type: "Adam"
@@ -123,5 +122,5 @@ pointcloud:
   geopotential_height_range: [0, 20000] # default is range of entire dataset in training -428.6875, 48664.082
   
 
-model_checkpoint: "./checkpoints/Finer_12480-iter_2025-03-28_12-42-33_model.pt" #example  
+model_checkpoint: "./checkpoints/KAN_12480-iter_2025-03-28_20-49-02_model.pt" #example  
   
