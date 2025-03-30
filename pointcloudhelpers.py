@@ -7,7 +7,7 @@ import cartopy.feature as cfeature
 
 
 
-def save_point_cloud_ply_latlon(point_cloud, filename="point_cloud.ply", render_type='all'):
+def save_point_cloud_ply_latlon(point_cloud, model='MLP', filename="point_cloud.ply", render_type='all'):
 
     # Convert dictionary arrays to numpy arrays.
     lat = np.array(point_cloud["lat"])
@@ -19,7 +19,7 @@ def save_point_cloud_ply_latlon(point_cloud, filename="point_cloud.ply", render_
     # x coordinate = longitude, y coordinate = latitude, z coordinate = geopotential height.
     points = np.column_stack([lon, lat, gh])
 
-    render_point_cloud(points, temperature, render_type=render_type)
+    render_point_cloud(points, temperature, model=model, render_type=render_type)
 
     # Create a PyVista PolyData object from the points.
     cloud = pv.PolyData(points)
@@ -33,7 +33,7 @@ def save_point_cloud_ply_latlon(point_cloud, filename="point_cloud.ply", render_
     cloud.save(filename)
     print(f"Point cloud saved to {filename}")
 
-def render_point_cloud(points, temperature, render_type='all'):
+def render_point_cloud(points, temperature, model='MLP', render_type='all'):
     axis_x, axis_y, axis_z = points[:, 0], points[:, 1], points[:, 2]
 
     d = {
@@ -47,7 +47,7 @@ def render_point_cloud(points, temperature, render_type='all'):
         text = 'GPH'
     axis_x, axis_y, axis_z = d[render_type]
 
-    axis_z_sampled = np.sort(np.unique_values(axis_z))
+    axis_z_sampled = np.sort(np.unique(axis_z))
     axis_z_sampled = axis_z_sampled[::int(np.floor(len(axis_z_sampled)/10))]
 
     plot_per_row = 5
@@ -71,5 +71,6 @@ def render_point_cloud(points, temperature, render_type='all'):
     fig.subplots_adjust(top=0.9, bottom=0.02, left=0.03, right=0.97)
     plt.colorbar(im, ax=axes, orientation="horizontal", label=f"t Kelvin", aspect=80)
     fig.suptitle(f'World tempurature prediction {text} {np.round(np.min(axis_z_sampled), 2)} to {text} {np.round(np.max(axis_z_sampled), 2)}', size=30)
-    plt.savefig(f'images/World_{text}.png')
-    print(f'Plot Saved: images/World_{text}.png')
+    plt.savefig(f'images/World_{model}_{text}.png')
+    plt.show()
+    print(f'Plot Saved: images/World_{model}_{text}.png')

@@ -83,7 +83,7 @@ class PointCloudGenerator:
 
         return inputs_tensor, lat_grid.flatten(), lon_grid.flatten(), gh_grid.flatten()
 
-    def generate(self, render_type='all'):
+    def generate(self, model='MLP', render_type='all'):
         debug_print()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
@@ -108,6 +108,6 @@ class PointCloudGenerator:
         model_target = self.target_str
         _, class_name = model_target.rsplit(".", 1)
         filename = f"{class_name}_point_cloud.ply"
-        save_point_cloud_ply_latlon(point_cloud, filename=filename, render_type=render_type)
+        save_point_cloud_ply_latlon(point_cloud, filename=filename, model=model, render_type=render_type)
 
         return filename
