@@ -1,0 +1,194 @@
+[rank: 0] Seed set to 42
+|===========================================================================|
+|                  PyTorch CUDA memory summary, device ID 0                 |
+|---------------------------------------------------------------------------|
+|            CUDA OOMs: 0            |        cudaMalloc retries: 0         |
+|===========================================================================|
+|        Metric         | Cur Usage  | Peak Usage | Tot Alloc  | Tot Freed  |
+|---------------------------------------------------------------------------|
+| Allocated memory      |      0 B   |      0 B   |      0 B   |      0 B   |
+|       from large pool |      0 B   |      0 B   |      0 B   |      0 B   |
+|       from small pool |      0 B   |      0 B   |      0 B   |      0 B   |
+|---------------------------------------------------------------------------|
+| Active memory         |      0 B   |      0 B   |      0 B   |      0 B   |
+|       from large pool |      0 B   |      0 B   |      0 B   |      0 B   |
+|       from small pool |      0 B   |      0 B   |      0 B   |      0 B   |
+|---------------------------------------------------------------------------|
+| Requested memory      |      0 B   |      0 B   |      0 B   |      0 B   |
+|       from large pool |      0 B   |      0 B   |      0 B   |      0 B   |
+|       from small pool |      0 B   |      0 B   |      0 B   |      0 B   |
+|---------------------------------------------------------------------------|
+| GPU reserved memory   |      0 B   |      0 B   |      0 B   |      0 B   |
+|       from large pool |      0 B   |      0 B   |      0 B   |      0 B   |
+|       from small pool |      0 B   |      0 B   |      0 B   |      0 B   |
+|---------------------------------------------------------------------------|
+| Non-releasable memory |      0 B   |      0 B   |      0 B   |      0 B   |
+|       from large pool |      0 B   |      0 B   |      0 B   |      0 B   |
+|       from small pool |      0 B   |      0 B   |      0 B   |      0 B   |
+|---------------------------------------------------------------------------|
+| Allocations           |       0    |       0    |       0    |       0    |
+|       from large pool |       0    |       0    |       0    |       0    |
+|       from small pool |       0    |       0    |       0    |       0    |
+|---------------------------------------------------------------------------|
+| Active allocs         |       0    |       0    |       0    |       0    |
+|       from large pool |       0    |       0    |       0    |       0    |
+|       from small pool |       0    |       0    |       0    |       0    |
+|---------------------------------------------------------------------------|
+| GPU reserved segments |       0    |       0    |       0    |       0    |
+|       from large pool |       0    |       0    |       0    |       0    |
+|       from small pool |       0    |       0    |       0    |       0    |
+|---------------------------------------------------------------------------|
+| Non-releasable allocs |       0    |       0    |       0    |       0    |
+|       from large pool |       0    |       0    |       0    |       0    |
+|       from small pool |       0    |       0    |       0    |       0    |
+|---------------------------------------------------------------------------|
+| Oversize allocations  |       0    |       0    |       0    |       0    |
+|---------------------------------------------------------------------------|
+| Oversize GPU segments |       0    |       0    |       0    |       0    |
+|===========================================================================|
+
+GPU RAM Free: 20065MB | Used: 4MB | Util   0% | Total 20470MB
+Config Loaded Successfully
+checkpoint directory created: ./model
+saving model version 0.0
+checkpoint directory created: ./model
+saving model version 0.0
+checkpoint directory created: ./model
+saving model version 0.0
+checkpoint directory created: ./model
+saving model version 0.0
+checkpoint directory created: ./model
+saving model version 0.0
+checkpoint directory created: ./model
+saving model version 0.0
+checkpoint directory created: ./model
+saving model version 0.0
+checkpoint directory created: ./model
+saving model version 0.0
+Generating point cloud from trained model...
+./checkpoints/KAN_12480-iter_2025-04-08_10-33-44_model.pt
+Traceback (most recent call last):
+  File "/w/284/poyuchen/3D_Troposphere/render.py", line 31, in <module>
+    model.load_state_dict(torch.load(checkpoint_path, map_location="cpu"))
+  File "/w/284/poyuchen/3D_Troposphere/venv/lib/python3.10/site-packages/torch/nn/modules/module.py", line 2581, in load_state_dict
+    raise RuntimeError(
+RuntimeError: Error(s) in loading state_dict for INRModel:
+	size mismatch for net.net.0.linear.node_bias_1: copying a param with shape torch.Size([32]) from checkpoint, the shape in current model is torch.Size([48]).
+	size mismatch for net.net.0.linear.node_scale_1: copying a param with shape torch.Size([32]) from checkpoint, the shape in current model is torch.Size([48]).
+	size mismatch for net.net.0.linear.subnode_bias_1: copying a param with shape torch.Size([32]) from checkpoint, the shape in current model is torch.Size([48]).
+	size mismatch for net.net.0.linear.subnode_scale_1: copying a param with shape torch.Size([32]) from checkpoint, the shape in current model is torch.Size([48]).
+	size mismatch for net.net.0.linear.act_fun.1.coef: copying a param with shape torch.Size([4, 32, 8]) from checkpoint, the shape in current model is torch.Size([4, 48, 8]).
+	size mismatch for net.net.0.linear.act_fun.1.mask: copying a param with shape torch.Size([4, 32]) from checkpoint, the shape in current model is torch.Size([4, 48]).
+	size mismatch for net.net.0.linear.act_fun.1.scale_base: copying a param with shape torch.Size([4, 32]) from checkpoint, the shape in current model is torch.Size([4, 48]).
+	size mismatch for net.net.0.linear.act_fun.1.scale_sp: copying a param with shape torch.Size([4, 32]) from checkpoint, the shape in current model is torch.Size([4, 48]).
+	size mismatch for net.net.0.linear.symbolic_fun.1.mask: copying a param with shape torch.Size([32, 4]) from checkpoint, the shape in current model is torch.Size([48, 4]).
+	size mismatch for net.net.0.linear.symbolic_fun.1.affine: copying a param with shape torch.Size([32, 4, 4]) from checkpoint, the shape in current model is torch.Size([48, 4, 4]).
+	size mismatch for net.net.1.linear.node_bias_1: copying a param with shape torch.Size([32]) from checkpoint, the shape in current model is torch.Size([48]).
+	size mismatch for net.net.1.linear.node_scale_1: copying a param with shape torch.Size([32]) from checkpoint, the shape in current model is torch.Size([48]).
+	size mismatch for net.net.1.linear.subnode_bias_1: copying a param with shape torch.Size([32]) from checkpoint, the shape in current model is torch.Size([48]).
+	size mismatch for net.net.1.linear.subnode_scale_1: copying a param with shape torch.Size([32]) from checkpoint, the shape in current model is torch.Size([48]).
+	size mismatch for net.net.1.linear.act_fun.0.grid: copying a param with shape torch.Size([32, 12]) from checkpoint, the shape in current model is torch.Size([48, 12]).
+	size mismatch for net.net.1.linear.act_fun.0.coef: copying a param with shape torch.Size([32, 4, 8]) from checkpoint, the shape in current model is torch.Size([48, 4, 8]).
+	size mismatch for net.net.1.linear.act_fun.0.mask: copying a param with shape torch.Size([32, 4]) from checkpoint, the shape in current model is torch.Size([48, 4]).
+	size mismatch for net.net.1.linear.act_fun.0.scale_base: copying a param with shape torch.Size([32, 4]) from checkpoint, the shape in current model is torch.Size([48, 4]).
+	size mismatch for net.net.1.linear.act_fun.0.scale_sp: copying a param with shape torch.Size([32, 4]) from checkpoint, the shape in current model is torch.Size([48, 4]).
+	size mismatch for net.net.1.linear.act_fun.1.coef: copying a param with shape torch.Size([4, 32, 8]) from checkpoint, the shape in current model is torch.Size([4, 48, 8]).
+	size mismatch for net.net.1.linear.act_fun.1.mask: copying a param with shape torch.Size([4, 32]) from checkpoint, the shape in current model is torch.Size([4, 48]).
+	size mismatch for net.net.1.linear.act_fun.1.scale_base: copying a param with shape torch.Size([4, 32]) from checkpoint, the shape in current model is torch.Size([4, 48]).
+	size mismatch for net.net.1.linear.act_fun.1.scale_sp: copying a param with shape torch.Size([4, 32]) from checkpoint, the shape in current model is torch.Size([4, 48]).
+	size mismatch for net.net.1.linear.symbolic_fun.0.mask: copying a param with shape torch.Size([4, 32]) from checkpoint, the shape in current model is torch.Size([4, 48]).
+	size mismatch for net.net.1.linear.symbolic_fun.0.affine: copying a param with shape torch.Size([4, 32, 4]) from checkpoint, the shape in current model is torch.Size([4, 48, 4]).
+	size mismatch for net.net.1.linear.symbolic_fun.1.mask: copying a param with shape torch.Size([32, 4]) from checkpoint, the shape in current model is torch.Size([48, 4]).
+	size mismatch for net.net.1.linear.symbolic_fun.1.affine: copying a param with shape torch.Size([32, 4, 4]) from checkpoint, the shape in current model is torch.Size([48, 4, 4]).
+	size mismatch for net.net.2.linear.node_bias_1: copying a param with shape torch.Size([32]) from checkpoint, the shape in current model is torch.Size([48]).
+	size mismatch for net.net.2.linear.node_scale_1: copying a param with shape torch.Size([32]) from checkpoint, the shape in current model is torch.Size([48]).
+	size mismatch for net.net.2.linear.subnode_bias_1: copying a param with shape torch.Size([32]) from checkpoint, the shape in current model is torch.Size([48]).
+	size mismatch for net.net.2.linear.subnode_scale_1: copying a param with shape torch.Size([32]) from checkpoint, the shape in current model is torch.Size([48]).
+	size mismatch for net.net.2.linear.act_fun.0.grid: copying a param with shape torch.Size([32, 12]) from checkpoint, the shape in current model is torch.Size([48, 12]).
+	size mismatch for net.net.2.linear.act_fun.0.coef: copying a param with shape torch.Size([32, 4, 8]) from checkpoint, the shape in current model is torch.Size([48, 4, 8]).
+	size mismatch for net.net.2.linear.act_fun.0.mask: copying a param with shape torch.Size([32, 4]) from checkpoint, the shape in current model is torch.Size([48, 4]).
+	size mismatch for net.net.2.linear.act_fun.0.scale_base: copying a param with shape torch.Size([32, 4]) from checkpoint, the shape in current model is torch.Size([48, 4]).
+	size mismatch for net.net.2.linear.act_fun.0.scale_sp: copying a param with shape torch.Size([32, 4]) from checkpoint, the shape in current model is torch.Size([48, 4]).
+	size mismatch for net.net.2.linear.act_fun.1.coef: copying a param with shape torch.Size([4, 32, 8]) from checkpoint, the shape in current model is torch.Size([4, 48, 8]).
+	size mismatch for net.net.2.linear.act_fun.1.mask: copying a param with shape torch.Size([4, 32]) from checkpoint, the shape in current model is torch.Size([4, 48]).
+	size mismatch for net.net.2.linear.act_fun.1.scale_base: copying a param with shape torch.Size([4, 32]) from checkpoint, the shape in current model is torch.Size([4, 48]).
+	size mismatch for net.net.2.linear.act_fun.1.scale_sp: copying a param with shape torch.Size([4, 32]) from checkpoint, the shape in current model is torch.Size([4, 48]).
+	size mismatch for net.net.2.linear.symbolic_fun.0.mask: copying a param with shape torch.Size([4, 32]) from checkpoint, the shape in current model is torch.Size([4, 48]).
+	size mismatch for net.net.2.linear.symbolic_fun.0.affine: copying a param with shape torch.Size([4, 32, 4]) from checkpoint, the shape in current model is torch.Size([4, 48, 4]).
+	size mismatch for net.net.2.linear.symbolic_fun.1.mask: copying a param with shape torch.Size([32, 4]) from checkpoint, the shape in current model is torch.Size([48, 4]).
+	size mismatch for net.net.2.linear.symbolic_fun.1.affine: copying a param with shape torch.Size([32, 4, 4]) from checkpoint, the shape in current model is torch.Size([48, 4, 4]).
+	size mismatch for net.net.3.linear.node_bias_1: copying a param with shape torch.Size([32]) from checkpoint, the shape in current model is torch.Size([48]).
+	size mismatch for net.net.3.linear.node_scale_1: copying a param with shape torch.Size([32]) from checkpoint, the shape in current model is torch.Size([48]).
+	size mismatch for net.net.3.linear.subnode_bias_1: copying a param with shape torch.Size([32]) from checkpoint, the shape in current model is torch.Size([48]).
+	size mismatch for net.net.3.linear.subnode_scale_1: copying a param with shape torch.Size([32]) from checkpoint, the shape in current model is torch.Size([48]).
+	size mismatch for net.net.3.linear.act_fun.0.grid: copying a param with shape torch.Size([32, 12]) from checkpoint, the shape in current model is torch.Size([48, 12]).
+	size mismatch for net.net.3.linear.act_fun.0.coef: copying a param with shape torch.Size([32, 4, 8]) from checkpoint, the shape in current model is torch.Size([48, 4, 8]).
+	size mismatch for net.net.3.linear.act_fun.0.mask: copying a param with shape torch.Size([32, 4]) from checkpoint, the shape in current model is torch.Size([48, 4]).
+	size mismatch for net.net.3.linear.act_fun.0.scale_base: copying a param with shape torch.Size([32, 4]) from checkpoint, the shape in current model is torch.Size([48, 4]).
+	size mismatch for net.net.3.linear.act_fun.0.scale_sp: copying a param with shape torch.Size([32, 4]) from checkpoint, the shape in current model is torch.Size([48, 4]).
+	size mismatch for net.net.3.linear.act_fun.1.coef: copying a param with shape torch.Size([4, 32, 8]) from checkpoint, the shape in current model is torch.Size([4, 48, 8]).
+	size mismatch for net.net.3.linear.act_fun.1.mask: copying a param with shape torch.Size([4, 32]) from checkpoint, the shape in current model is torch.Size([4, 48]).
+	size mismatch for net.net.3.linear.act_fun.1.scale_base: copying a param with shape torch.Size([4, 32]) from checkpoint, the shape in current model is torch.Size([4, 48]).
+	size mismatch for net.net.3.linear.act_fun.1.scale_sp: copying a param with shape torch.Size([4, 32]) from checkpoint, the shape in current model is torch.Size([4, 48]).
+	size mismatch for net.net.3.linear.symbolic_fun.0.mask: copying a param with shape torch.Size([4, 32]) from checkpoint, the shape in current model is torch.Size([4, 48]).
+	size mismatch for net.net.3.linear.symbolic_fun.0.affine: copying a param with shape torch.Size([4, 32, 4]) from checkpoint, the shape in current model is torch.Size([4, 48, 4]).
+	size mismatch for net.net.3.linear.symbolic_fun.1.mask: copying a param with shape torch.Size([32, 4]) from checkpoint, the shape in current model is torch.Size([48, 4]).
+	size mismatch for net.net.3.linear.symbolic_fun.1.affine: copying a param with shape torch.Size([32, 4, 4]) from checkpoint, the shape in current model is torch.Size([48, 4, 4]).
+	size mismatch for net.net.4.linear.node_bias_1: copying a param with shape torch.Size([32]) from checkpoint, the shape in current model is torch.Size([48]).
+	size mismatch for net.net.4.linear.node_scale_1: copying a param with shape torch.Size([32]) from checkpoint, the shape in current model is torch.Size([48]).
+	size mismatch for net.net.4.linear.subnode_bias_1: copying a param with shape torch.Size([32]) from checkpoint, the shape in current model is torch.Size([48]).
+	size mismatch for net.net.4.linear.subnode_scale_1: copying a param with shape torch.Size([32]) from checkpoint, the shape in current model is torch.Size([48]).
+	size mismatch for net.net.4.linear.act_fun.0.grid: copying a param with shape torch.Size([32, 12]) from checkpoint, the shape in current model is torch.Size([48, 12]).
+	size mismatch for net.net.4.linear.act_fun.0.coef: copying a param with shape torch.Size([32, 4, 8]) from checkpoint, the shape in current model is torch.Size([48, 4, 8]).
+	size mismatch for net.net.4.linear.act_fun.0.mask: copying a param with shape torch.Size([32, 4]) from checkpoint, the shape in current model is torch.Size([48, 4]).
+	size mismatch for net.net.4.linear.act_fun.0.scale_base: copying a param with shape torch.Size([32, 4]) from checkpoint, the shape in current model is torch.Size([48, 4]).
+	size mismatch for net.net.4.linear.act_fun.0.scale_sp: copying a param with shape torch.Size([32, 4]) from checkpoint, the shape in current model is torch.Size([48, 4]).
+	size mismatch for net.net.4.linear.act_fun.1.coef: copying a param with shape torch.Size([4, 32, 8]) from checkpoint, the shape in current model is torch.Size([4, 48, 8]).
+	size mismatch for net.net.4.linear.act_fun.1.mask: copying a param with shape torch.Size([4, 32]) from checkpoint, the shape in current model is torch.Size([4, 48]).
+	size mismatch for net.net.4.linear.act_fun.1.scale_base: copying a param with shape torch.Size([4, 32]) from checkpoint, the shape in current model is torch.Size([4, 48]).
+	size mismatch for net.net.4.linear.act_fun.1.scale_sp: copying a param with shape torch.Size([4, 32]) from checkpoint, the shape in current model is torch.Size([4, 48]).
+	size mismatch for net.net.4.linear.symbolic_fun.0.mask: copying a param with shape torch.Size([4, 32]) from checkpoint, the shape in current model is torch.Size([4, 48]).
+	size mismatch for net.net.4.linear.symbolic_fun.0.affine: copying a param with shape torch.Size([4, 32, 4]) from checkpoint, the shape in current model is torch.Size([4, 48, 4]).
+	size mismatch for net.net.4.linear.symbolic_fun.1.mask: copying a param with shape torch.Size([32, 4]) from checkpoint, the shape in current model is torch.Size([48, 4]).
+	size mismatch for net.net.4.linear.symbolic_fun.1.affine: copying a param with shape torch.Size([32, 4, 4]) from checkpoint, the shape in current model is torch.Size([48, 4, 4]).
+	size mismatch for net.net.5.linear.node_bias_1: copying a param with shape torch.Size([32]) from checkpoint, the shape in current model is torch.Size([48]).
+	size mismatch for net.net.5.linear.node_scale_1: copying a param with shape torch.Size([32]) from checkpoint, the shape in current model is torch.Size([48]).
+	size mismatch for net.net.5.linear.subnode_bias_1: copying a param with shape torch.Size([32]) from checkpoint, the shape in current model is torch.Size([48]).
+	size mismatch for net.net.5.linear.subnode_scale_1: copying a param with shape torch.Size([32]) from checkpoint, the shape in current model is torch.Size([48]).
+	size mismatch for net.net.5.linear.act_fun.0.grid: copying a param with shape torch.Size([32, 12]) from checkpoint, the shape in current model is torch.Size([48, 12]).
+	size mismatch for net.net.5.linear.act_fun.0.coef: copying a param with shape torch.Size([32, 4, 8]) from checkpoint, the shape in current model is torch.Size([48, 4, 8]).
+	size mismatch for net.net.5.linear.act_fun.0.mask: copying a param with shape torch.Size([32, 4]) from checkpoint, the shape in current model is torch.Size([48, 4]).
+	size mismatch for net.net.5.linear.act_fun.0.scale_base: copying a param with shape torch.Size([32, 4]) from checkpoint, the shape in current model is torch.Size([48, 4]).
+	size mismatch for net.net.5.linear.act_fun.0.scale_sp: copying a param with shape torch.Size([32, 4]) from checkpoint, the shape in current model is torch.Size([48, 4]).
+	size mismatch for net.net.5.linear.act_fun.1.coef: copying a param with shape torch.Size([4, 32, 8]) from checkpoint, the shape in current model is torch.Size([4, 48, 8]).
+	size mismatch for net.net.5.linear.act_fun.1.mask: copying a param with shape torch.Size([4, 32]) from checkpoint, the shape in current model is torch.Size([4, 48]).
+	size mismatch for net.net.5.linear.act_fun.1.scale_base: copying a param with shape torch.Size([4, 32]) from checkpoint, the shape in current model is torch.Size([4, 48]).
+	size mismatch for net.net.5.linear.act_fun.1.scale_sp: copying a param with shape torch.Size([4, 32]) from checkpoint, the shape in current model is torch.Size([4, 48]).
+	size mismatch for net.net.5.linear.symbolic_fun.0.mask: copying a param with shape torch.Size([4, 32]) from checkpoint, the shape in current model is torch.Size([4, 48]).
+	size mismatch for net.net.5.linear.symbolic_fun.0.affine: copying a param with shape torch.Size([4, 32, 4]) from checkpoint, the shape in current model is torch.Size([4, 48, 4]).
+	size mismatch for net.net.5.linear.symbolic_fun.1.mask: copying a param with shape torch.Size([32, 4]) from checkpoint, the shape in current model is torch.Size([48, 4]).
+	size mismatch for net.net.5.linear.symbolic_fun.1.affine: copying a param with shape torch.Size([32, 4, 4]) from checkpoint, the shape in current model is torch.Size([48, 4, 4]).
+	size mismatch for net.net.6.linear.node_bias_1: copying a param with shape torch.Size([32]) from checkpoint, the shape in current model is torch.Size([48]).
+	size mismatch for net.net.6.linear.node_scale_1: copying a param with shape torch.Size([32]) from checkpoint, the shape in current model is torch.Size([48]).
+	size mismatch for net.net.6.linear.subnode_bias_1: copying a param with shape torch.Size([32]) from checkpoint, the shape in current model is torch.Size([48]).
+	size mismatch for net.net.6.linear.subnode_scale_1: copying a param with shape torch.Size([32]) from checkpoint, the shape in current model is torch.Size([48]).
+	size mismatch for net.net.6.linear.act_fun.0.grid: copying a param with shape torch.Size([32, 12]) from checkpoint, the shape in current model is torch.Size([48, 12]).
+	size mismatch for net.net.6.linear.act_fun.0.coef: copying a param with shape torch.Size([32, 4, 8]) from checkpoint, the shape in current model is torch.Size([48, 4, 8]).
+	size mismatch for net.net.6.linear.act_fun.0.mask: copying a param with shape torch.Size([32, 4]) from checkpoint, the shape in current model is torch.Size([48, 4]).
+	size mismatch for net.net.6.linear.act_fun.0.scale_base: copying a param with shape torch.Size([32, 4]) from checkpoint, the shape in current model is torch.Size([48, 4]).
+	size mismatch for net.net.6.linear.act_fun.0.scale_sp: copying a param with shape torch.Size([32, 4]) from checkpoint, the shape in current model is torch.Size([48, 4]).
+	size mismatch for net.net.6.linear.act_fun.1.coef: copying a param with shape torch.Size([4, 32, 8]) from checkpoint, the shape in current model is torch.Size([4, 48, 8]).
+	size mismatch for net.net.6.linear.act_fun.1.mask: copying a param with shape torch.Size([4, 32]) from checkpoint, the shape in current model is torch.Size([4, 48]).
+	size mismatch for net.net.6.linear.act_fun.1.scale_base: copying a param with shape torch.Size([4, 32]) from checkpoint, the shape in current model is torch.Size([4, 48]).
+	size mismatch for net.net.6.linear.act_fun.1.scale_sp: copying a param with shape torch.Size([4, 32]) from checkpoint, the shape in current model is torch.Size([4, 48]).
+	size mismatch for net.net.6.linear.symbolic_fun.0.mask: copying a param with shape torch.Size([4, 32]) from checkpoint, the shape in current model is torch.Size([4, 48]).
+	size mismatch for net.net.6.linear.symbolic_fun.0.affine: copying a param with shape torch.Size([4, 32, 4]) from checkpoint, the shape in current model is torch.Size([4, 48, 4]).
+	size mismatch for net.net.6.linear.symbolic_fun.1.mask: copying a param with shape torch.Size([32, 4]) from checkpoint, the shape in current model is torch.Size([48, 4]).
+	size mismatch for net.net.6.linear.symbolic_fun.1.affine: copying a param with shape torch.Size([32, 4, 4]) from checkpoint, the shape in current model is torch.Size([48, 4, 4]).
+	size mismatch for net.net.7.linear.act_fun.0.grid: copying a param with shape torch.Size([32, 12]) from checkpoint, the shape in current model is torch.Size([48, 12]).
+	size mismatch for net.net.7.linear.act_fun.0.coef: copying a param with shape torch.Size([32, 4, 8]) from checkpoint, the shape in current model is torch.Size([48, 4, 8]).
+	size mismatch for net.net.7.linear.act_fun.0.mask: copying a param with shape torch.Size([32, 4]) from checkpoint, the shape in current model is torch.Size([48, 4]).
+	size mismatch for net.net.7.linear.act_fun.0.scale_base: copying a param with shape torch.Size([32, 4]) from checkpoint, the shape in current model is torch.Size([48, 4]).
+	size mismatch for net.net.7.linear.act_fun.0.scale_sp: copying a param with shape torch.Size([32, 4]) from checkpoint, the shape in current model is torch.Size([48, 4]).
+	size mismatch for net.net.7.linear.symbolic_fun.0.mask: copying a param with shape torch.Size([4, 32]) from checkpoint, the shape in current model is torch.Size([4, 48]).
+	size mismatch for net.net.7.linear.symbolic_fun.0.affine: copying a param with shape torch.Size([4, 32, 4]) from checkpoint, the shape in current model is torch.Size([4, 48, 4]).

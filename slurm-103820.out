@@ -1,0 +1,108 @@
+[rank: 0] Seed set to 42
+|===========================================================================|
+|                  PyTorch CUDA memory summary, device ID 0                 |
+|---------------------------------------------------------------------------|
+|            CUDA OOMs: 0            |        cudaMalloc retries: 0         |
+|===========================================================================|
+|        Metric         | Cur Usage  | Peak Usage | Tot Alloc  | Tot Freed  |
+|---------------------------------------------------------------------------|
+| Allocated memory      |      0 B   |      0 B   |      0 B   |      0 B   |
+|       from large pool |      0 B   |      0 B   |      0 B   |      0 B   |
+|       from small pool |      0 B   |      0 B   |      0 B   |      0 B   |
+|---------------------------------------------------------------------------|
+| Active memory         |      0 B   |      0 B   |      0 B   |      0 B   |
+|       from large pool |      0 B   |      0 B   |      0 B   |      0 B   |
+|       from small pool |      0 B   |      0 B   |      0 B   |      0 B   |
+|---------------------------------------------------------------------------|
+| Requested memory      |      0 B   |      0 B   |      0 B   |      0 B   |
+|       from large pool |      0 B   |      0 B   |      0 B   |      0 B   |
+|       from small pool |      0 B   |      0 B   |      0 B   |      0 B   |
+|---------------------------------------------------------------------------|
+| GPU reserved memory   |      0 B   |      0 B   |      0 B   |      0 B   |
+|       from large pool |      0 B   |      0 B   |      0 B   |      0 B   |
+|       from small pool |      0 B   |      0 B   |      0 B   |      0 B   |
+|---------------------------------------------------------------------------|
+| Non-releasable memory |      0 B   |      0 B   |      0 B   |      0 B   |
+|       from large pool |      0 B   |      0 B   |      0 B   |      0 B   |
+|       from small pool |      0 B   |      0 B   |      0 B   |      0 B   |
+|---------------------------------------------------------------------------|
+| Allocations           |       0    |       0    |       0    |       0    |
+|       from large pool |       0    |       0    |       0    |       0    |
+|       from small pool |       0    |       0    |       0    |       0    |
+|---------------------------------------------------------------------------|
+| Active allocs         |       0    |       0    |       0    |       0    |
+|       from large pool |       0    |       0    |       0    |       0    |
+|       from small pool |       0    |       0    |       0    |       0    |
+|---------------------------------------------------------------------------|
+| GPU reserved segments |       0    |       0    |       0    |       0    |
+|       from large pool |       0    |       0    |       0    |       0    |
+|       from small pool |       0    |       0    |       0    |       0    |
+|---------------------------------------------------------------------------|
+| Non-releasable allocs |       0    |       0    |       0    |       0    |
+|       from large pool |       0    |       0    |       0    |       0    |
+|       from small pool |       0    |       0    |       0    |       0    |
+|---------------------------------------------------------------------------|
+| Oversize allocations  |       0    |       0    |       0    |       0    |
+|---------------------------------------------------------------------------|
+| Oversize GPU segments |       0    |       0    |       0    |       0    |
+|===========================================================================|
+
+GPU RAM Free: 20065MB | Used: 4MB | Util   0% | Total 20470MB
+Config Loaded Successfully
+checkpoint directory created: ./model
+saving model version 0.0
+checkpoint directory created: ./model
+saving model version 0.0
+checkpoint directory created: ./model
+saving model version 0.0
+checkpoint directory created: ./model
+saving model version 0.0
+checkpoint directory created: ./model
+saving model version 0.0
+checkpoint directory created: ./model
+saving model version 0.0
+checkpoint directory created: ./model
+saving model version 0.0
+checkpoint directory created: ./model
+saving model version 0.0
+Generating point cloud from trained model...
+./checkpoints/KAN_12480-iter_2025-04-08_10-33-44_model.pt
+lon
+torch.Size([16200000, 4])
+Plot Saved: images/World_Siren_KAN_lon.png
+PolyData (0x7f78a05d3700)
+  N Cells:    16200000
+  N Points:   16200000
+  N Strips:   0
+  X Bounds:   -1.800e+02, 1.800e+02
+  Y Bounds:   -9.000e+01, 9.000e+01
+  Z Bounds:   0.000e+00, 2.000e+04
+  N Arrays:   1
+Point cloud saved to Siren_KAN_point_cloud.ply
+Point cloud saved to Siren_KAN_point_cloud.ply
+lat
+torch.Size([16200000, 4])
+Plot Saved: images/World_Siren_KAN_lat.png
+PolyData (0x7f78a020bf40)
+  N Cells:    16200000
+  N Points:   16200000
+  N Strips:   0
+  X Bounds:   -1.800e+02, 1.800e+02
+  Y Bounds:   -9.000e+01, 9.000e+01
+  Z Bounds:   0.000e+00, 2.000e+04
+  N Arrays:   1
+Point cloud saved to Siren_KAN_point_cloud.ply
+Point cloud saved to Siren_KAN_point_cloud.ply
+all
+torch.Size([16200000, 4])
+Plot Saved: images/World_Siren_KAN_GPH.png
+PolyData (0x7f78ad4b8160)
+  N Cells:    16200000
+  N Points:   16200000
+  N Strips:   0
+  X Bounds:   -1.800e+02, 1.800e+02
+  Y Bounds:   -9.000e+01, 9.000e+01
+  Z Bounds:   0.000e+00, 2.000e+04
+  N Arrays:   1
+Point cloud saved to Siren_KAN_point_cloud.ply
+Point cloud saved to Siren_KAN_point_cloud.ply

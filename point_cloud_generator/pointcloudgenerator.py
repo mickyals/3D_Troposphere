@@ -91,11 +91,29 @@ class PointCloudGenerator:
         # Sample points based on config.
         inputs_tensor, lat_samples, lon_samples, gh_samples = self.sample_points()
 
-        # Use the model to predict temperature. The model returns normalized temperature.
+        print(inputs_tensor.shape)
+
+        # # Use the model to predict temperature. The model returns normalized temperature.
+        # # with torch.no_grad():
+        # temp_pred_norm = self.model(inputs_tensor)
+        # # Unnormalize temperature from [-1, 1] to [K_min, K_max]
+        # temp_real = (temp_pred_norm + 1) / 2 * (self.K_max - self.K_min) + self.K_min
+
+        batch_size = 1024  # Adjust based on available memory
+        num_samples = inputs_tensor.shape[0]
+        temp_pred_norm_list = []
+
         with torch.no_grad():
-            temp_pred_norm = self.model(inputs_tensor)
-            # Unnormalize temperature from [-1, 1] to [K_min, K_max]
-            temp_real = (temp_pred_norm + 1) / 2 * (self.K_max - self.K_min) + self.K_min
+            for i in range(0, num_samples, batch_size):
+                batch = inputs_tensor[i : i + batch_size].to("cuda")  # Move batch to GPU
+                temp_pred_norm_batch = self.model(batch)  # Inference
+                temp_pred_norm_list.append(temp_pred_norm_batch.cpu())  # Move back to CPU to free GPU memory
+
+        # Concatenate all batch outputs
+        temp_pred_norm = torch.cat(temp_pred_norm_list, dim=0)
+
+        # Unnormalize
+        temp_real = (temp_pred_norm + 1) / 2 * (self.K_max - self.K_min) + self.K_min
 
         point_cloud = {
             "lat": lat_samples,

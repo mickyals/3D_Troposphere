@@ -1,40 +1,45 @@
-# import open3d as o3d
+
+from data import *
+from models import *
+from point_cloud_generator import *
+from pointcloudhelpers import *
+from utils import *
+from helpers import *
+from main import *
+import pyvista as pv 
 import numpy as np
-import matplotlib.pyplot as plt
-# from mpl_toolkits.mplot3d import Axes3Ds
-import argparse
-import pyvista as pv
 
-def render_point_cloud(ply_file):
-    # Load PLY file
-    pcd = pv.read(ply_file)
-    
-    # Convert to numpy array
-    points = np.asarray(pcd.points)
-    
-    print(pcd)
-    # Check if temperature data exists
-    if "temperature" in pcd.cell_data:
-        temperature = np.asarray(pcd.cell_data["temperature"])
-    else:
-        print("Temperature data not found in the PLY file.")
-        return
-    
-    # Plot using Matplotlib
-    fig = plt.figure(figsize=(8, 8))
-    ax = fig.add_subplot(111, projection='3d')
-    scatter = ax.scatter(points[:, 0], points[:, 1], points[:, 2], c=temperature, cmap='viridis', s=1)
-    fig.colorbar(scatter, label="Temperature")
-    ax.set_xlabel("Longitude")
-    ax.set_ylabel("Latitude")
-    ax.set_zlabel("Geopotential Height")
-    ax.set_title("3D Point Cloud with Temperature Colormap")
-    print("done")
-    plt.show()
+# Load YAML config
+config = load_config("configs/config.yaml")
 
-if __name__ == "__main__":
-    print("start")
-    parser = argparse.ArgumentParser(description="Render a PLY point cloud with temperature colormap.")
-    parser.add_argument("ply_file", type=str, help="Path to the PLY file.")
-    args = parser.parse_args()
-    render_point_cloud(args.ply_file)
+# # Set random seed for reproducibility
+seed_everything(config.seed, workers=True)
+print("Config Loaded Successfully")
+
+# # Instantiate DataModule with optimized settings
+data_module = AtmosphereDataModule(config)
+
+# # Instantiate Model
+target_str = config.model._target_
+model = INRModel(config).to(set_device())
+
+print("Generating point cloud from trained model...")
+
+# Load trained model from checkpoint
+checkpoint_path = config.model_checkpoint  # Ensure this is defined in config
+print(checkpoint_path)
+model.load_state_dict(torch.load(checkpoint_path, map_location="cpu"))
+model.eval()
+
+# Initialize PointCloudGenerator
+config.model._target_ = target_str
+pc_generator = PointCloudGenerator(model, config, device="cpu")
+
+for render_type in RENDER_TYPES:
+    print(render_type)
+    render_type = render_type.lower()
+    if render_type not in RENDER_TYPES:
+        raise Exception(f"Invalid render type: must be {RENDER_TYPES}, got {render_type}")
+    pointcloud_filename = pc_generator.generate(model=target_str.split('.')[-1], render_type=render_type)
+
+    print(f"Point cloud saved to {pointcloud_filename}")

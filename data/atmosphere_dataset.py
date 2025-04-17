@@ -4,6 +4,8 @@ import xarray as xr
 import numpy as np
 from helpers import debug_print, set_device
 
+DATATYPE = np.float16
+
 class AtmosphereDataset(IterableDataset):
     def __init__(self, config):
         """
@@ -38,9 +40,9 @@ class AtmosphereDataset(IterableDataset):
     def _precompute_static_data(self):
         """Precompute the spatial grid from latitude and longitude and the pressure values."""
         with xr.open_dataset(self.nc_file, engine="netcdf4", decode_times=False) as ds:
-            lats = ds.latitude.values.astype(np.float32)  # shape (num_lat,)
-            lons = ds.longitude.values.astype(np.float32)  # shape (num_lon,)
-            pressures = ds.pressure_level.values.astype(np.float32)  # shape (num_pressure,)
+            lats = ds.latitude.values.astype(DATATYPE)  # shape (num_lat,)
+            lons = ds.longitude.values.astype(DATATYPE)  # shape (num_lon,)
+            pressures = ds.pressure_level.values.astype(DATATYPE)  # shape (num_pressure,)
 
         # Create 2D grid for spatial coordinates
         lon_grid, lat_grid = np.meshgrid(lons, lats, indexing="ij")  # shape (num_lon, num_lat)
@@ -53,9 +55,9 @@ class AtmosphereDataset(IterableDataset):
 
         # Compute Cartesian coordinates (spherical to Cartesian on unit sphere)
         cos_lat = np.cos(lat_rad)
-        x = (cos_lat * np.cos(lon_rad)).astype(np.float32)
-        y = (cos_lat * np.sin(lon_rad)).astype(np.float32)
-        z = np.sin(lat_rad).astype(np.float32)
+        x = (cos_lat * np.cos(lon_rad)).astype(DATATYPE)
+        y = (cos_lat * np.sin(lon_rad)).astype(DATATYPE)
+        z = np.sin(lat_rad).astype(DATATYPE)
 
         # Flatten the 2D spatial grid (order: C-order, so that the fastest axis is longitude)
         x_flat = x.ravel()  # shape: (num_lat * num_lon,)
@@ -80,14 +82,14 @@ class AtmosphereDataset(IterableDataset):
             ts = ds.isel(valid_time=time_idx).load()  # load the full time slice
 
             # Raw variables (shape: [num_pressure, num_lat, num_lon])
-            t = ts.t.values.astype(np.float32)
-            z = ts.z.values.astype(np.float32)
-            q = ts.q.values.astype(np.float32)
+            t = ts.t.values.astype(DATATYPE)
+            z = ts.z.values.astype(DATATYPE)
+            q = ts.q.values.astype(DATATYPE)
             # Normalized variables
-            t_norm = ts.t_norm.values.astype(np.float32)
-            z_norm = ts.z_norm.values.astype(np.float32)
+            t_norm = ts.t_norm.values.astype(DATATYPE)
+            z_norm = ts.z_norm.values.astype(DATATYPE)
             # Base geopotential: select slice at pressure level 1000 (shape: [num_lat, num_lon])
-            gh_base = ts.z.sel(pressure_level=1000).values.astype(np.float32)
+            gh_base = ts.z.sel(pressure_level=1000).values.astype(DATATYPE)
 
         # Flatten arrays (using C-order so that order is [pressure, lat, lon])
         time_data = {
@@ -167,8 +169,8 @@ class AtmosphereIterableDataset(IterableDataset):
     def _precompute_static_data(self):
         """Precompute static spatial grid and pressure levels."""
         with xr.open_dataset(self.nc_file, engine="netcdf4", decode_times=False) as ds:
-            lats = ds.latitude.values.astype(np.float32)
-            lons = ds.longitude.values.astype(np.float32)
+            lats = ds.latitude.values.astype(DATATYPE)
+            lons = ds.longitude.values.astype(DATATYPE)
 
 
         lon_grid, lat_grid = np.meshgrid(lons, lats, indexing="ij")
@@ -178,9 +180,9 @@ class AtmosphereIterableDataset(IterableDataset):
         lon_rad = np.deg2rad(lon_centered)
 
         cos_lat = np.cos(lat_rad)
-        x = (cos_lat * np.cos(lon_rad)).astype(np.float32)
-        y = (cos_lat * np.sin(lon_rad)).astype(np.float32)
-        z = np.sin(lat_rad).astype(np.float32)
+        x = (cos_lat * np.cos(lon_rad)).astype(DATATYPE)
+        y = (cos_lat * np.sin(lon_rad)).astype(DATATYPE)
+        z = np.sin(lat_rad).astype(DATATYPE)
 
         x_flat = x.ravel()
         y_flat = y.ravel()
@@ -195,17 +197,18 @@ class AtmosphereIterableDataset(IterableDataset):
 
     def _load_time_step(self, time_idx):
         """Load and normalize all variables for a single timestep."""
+        torch.cuda.empty_cache() if torch.cuda.is_available() else None
         with xr.open_dataset(self.nc_file, engine="netcdf4", decode_times=False, drop_variables=["z"]) as ds:
             ts = ds.isel(valid_time=time_idx).load()
 
-            #z = ts.z.values.astype(np.float32).ravel()
-            q = ts.q.values.astype(np.float32).ravel()
-            t = ts.t.values.astype(np.float32).ravel()
-            t_norm = ts.t_norm.values.astype(np.float32).ravel()
-            gh_norm = ts.z_norm.values.astype(np.float32).ravel()
-            p1_p2_ratio = ts.p1_p2_ratio.values.astype(np.float32).ravel()
-            mean_T_v = ts.mean_T_v.values.astype(np.float32).ravel()
-            delta_z = ts.delta_z.values.astype(np.float32).ravel()
+            #z = ts.z.values.astype(DATATYPE).ravel()
+            q = ts.q.values.astype(DATATYPE).ravel()
+            t = ts.t.values.astype(DATATYPE).ravel()
+            t_norm = ts.t_norm.values.astype(DATATYPE).ravel()
+            gh_norm = ts.z_norm.values.astype(DATATYPE).ravel()
+            p1_p2_ratio = ts.p1_p2_ratio.values.astype(DATATYPE).ravel()
+            mean_T_v = ts.mean_T_v.values.astype(DATATYPE).ravel()
+            delta_z = ts.delta_z.values.astype(DATATYPE).ravel()
 
 
         # **Shuffle all points within the time step**

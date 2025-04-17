@@ -8,10 +8,12 @@
 # Another terminal:
 # `ssh -N -L 8888:gpunode16:8888 poyuchen@comps0.cs.toronto.edu`
 
-port=8886
+port=8888
 node=$(hostname -s)
 user=poyuchen
 
+source venv/bin/activate
+which python
 
 # run jupyter notebook
 jupyter-notebook --no-browser --port=${port} --ip=${node}

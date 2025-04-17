@@ -47,16 +47,18 @@ def render_point_cloud(points, temperature, model='MLP', render_type='all'):
         text = 'GPH'
     axis_x, axis_y, axis_z = d[render_type]
 
-    axis_z_sampled = np.sort(np.unique(axis_z))
-    axis_z_sampled = axis_z_sampled[::int(np.floor(len(axis_z_sampled)/10))]
+    num_plot = 6
 
-    plot_per_row = 5
+    axis_z_sampled = np.sort(np.unique(axis_z))
+    axis_z_sampled = axis_z_sampled[::int(np.floor(len(axis_z_sampled)/num_plot))]
+
+    plot_per_row = 3
     if render_type == 'all':
-        fig, axes = plt.subplots(int(np.ceil(len(axis_z_sampled)/plot_per_row)), plot_per_row, figsize=(18, 12), subplot_kw={"projection": ccrs.PlateCarree()})
+        fig, axes = plt.subplots(int(num_plot/plot_per_row), plot_per_row, figsize=(18, 10), subplot_kw={"projection": ccrs.PlateCarree()})
     else:
-        fig, axes = plt.subplots(int(np.ceil(len(axis_z_sampled)/plot_per_row)), plot_per_row, figsize=(18, 12))
+        fig, axes = plt.subplots(int(num_plot/plot_per_row), plot_per_row, figsize=(18, 8))
     axes = axes.flatten()
-    for i, level in enumerate(axis_z_sampled):
+    for i, level in enumerate(axis_z_sampled[:num_plot]):
         ax = axes[i]
         index = np.where(axis_z == level)[0]
         if render_type == 'all':
@@ -64,11 +66,11 @@ def render_point_cloud(points, temperature, model='MLP', render_type='all'):
             ax.coastlines()
         else:
             im = ax.scatter(axis_x[index], axis_y[index], c=temperature[index], s=0.5, cmap="inferno")
-        ax.set_title(f"{text} {np.round(level, 2)}", fontsize=15)
+        ax.set_title(f"{text} {np.round(level, 2)}", fontsize=20)
         ax.set_xticks([])
         ax.set_yticks([])
     # fig.tight_layout()
-    fig.subplots_adjust(top=0.9, bottom=0.02, left=0.03, right=0.97)
+    fig.subplots_adjust(top=0.85, bottom=0.02, left=0.03, right=0.97)
     plt.colorbar(im, ax=axes, orientation="horizontal", label=f"t Kelvin", aspect=80)
     fig.suptitle(f'World tempurature prediction {text} {np.round(np.min(axis_z_sampled), 2)} to {text} {np.round(np.max(axis_z_sampled), 2)}', size=30)
     plt.savefig(f'images/World_{model}_{text}.png')

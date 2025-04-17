@@ -2,6 +2,8 @@ import argparse
 import os
 import torch
 import pytorch_lightning as pl
+import GPUtil as GPU
+
 from pytorch_lightning import seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
@@ -16,9 +18,16 @@ import wandb
 
 RENDER_TYPES = ['lon', 'lat', 'all']
 
+def gpu_info():
+    GPUs = GPU.getGPUs()
+    gpu = GPUs[0] 
+    print("GPU RAM Free: {0:.0f}MB | Used: {1:.0f}MB | Util {2:3.0f}% | Total {3:.0f}MB".format(gpu.memoryFree, gpu.memoryUsed, gpu.memoryUtil*100, gpu.memoryTotal))
+
 if torch.cuda.is_available():
     torch.cuda.empty_cache()
     print(torch.cuda.memory_summary())
+    gpu_info()
+
 
 # ---------------- Step 1: Argument Parsing ----------------
 def get_parser():
@@ -82,6 +91,7 @@ if __name__ == "__main__":
     # # Instantiate Model
     target_str = config.model._target_
     model = INRModel(config).to(set_device())
+    torch.set_float32_matmul_precision('medium')  # Set precision for matmul operations
 
     # # Callback setup
     model_name = config.get("run_name", "UnknownModel")
